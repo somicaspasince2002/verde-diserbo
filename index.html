@@ -218,14 +218,13 @@ function defaultDB(){
 //    { "rules": { ".read": "auth != null", ".write": "auth != null" } }
 //    oppure per test: { "rules": { ".read": true, ".write": true } }
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCE9yRxeYDsV2gx0ylRVFwK1c3OKaWkHY0",
-  authDomain: "somica-verde-diserbo.firebaseapp.com",
-  databaseURL: "https://somica-verde-diserbo-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "somica-verde-diserbo",
-  storageBucket: "somica-verde-diserbo.firebasestorage.app",
-  messagingSenderId: "1025583641343",
-  appId: "1:1025583641343:web:f0772ec6c659c77e9bd2ca",
-  measurementId: "G-V150K7B2YK"
+  apiKey: "INSERISCI_QUI_LA_TUA_API_KEY",
+  authDomain: "INSERISCI_QUI.firebaseapp.com",
+  databaseURL: "https://INSERISCI_QUI-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "INSERISCI_QUI",
+  storageBucket: "INSERISCI_QUI.appspot.com",
+  messagingSenderId: "INSERISCI_QUI",
+  appId: "INSERISCI_QUI"
 };
 
 let firebaseDB = null;
@@ -243,12 +242,21 @@ function initFirebase(){
       firebaseRef.on('value', snapshot => {
         const data = snapshot.val();
         if(data){
+          // Merge: preserva struttura default se mancano chiavi
+          const def = defaultDB();
           db = data;
-          // Save local cache
-          try{localStorage.setItem(DB_KEY, JSON.stringify(db));}catch(e){}
-          // Refresh current view if logged in
-          if(currentUser && currentRoute) refreshCurrentView();
+          // Assicura che le array chiave esistano sempre
+          ['utenti','settoriDiserbo','areeDiserbo','lavorazioniDiserbo','registrazioniDiserbo',
+           'settoriVerde','areeVerde','lavorazioniVerde','registrazioniVerde'].forEach(k=>{
+            if(!db[k]) db[k] = def[k];
+          });
+        } else {
+          // Firebase vuoto: carica dati di default e li salva sul cloud
+          db = defaultDB();
+          firebaseRef.set(db);
         }
+        try{localStorage.setItem(DB_KEY, JSON.stringify(db));}catch(e){}
+        if(currentUser && currentRoute) refreshCurrentView();
       });
       showBanner('&#9925; Database cloud attivo — dati condivisi tra tutti gli utenti', 'success');
       console.log('Firebase connected');
@@ -722,36 +730,191 @@ function eliminaReg(modulo,id){
 
 // ============ STATISTICHE ============
 function renderStatistiche(){
-  const d=db.registrazioniDiserbo,v=db.registrazioniVerde;
-  function byMese(regs){const m={};regs.forEach(r=>{const k=r.data.slice(0,7);m[k]=(m[k]||0)+1;});return Object.entries(m).sort().slice(-6);}
-  function byArea(regs,aree){const m={};regs.forEach(r=>{const a=aree.find(x=>x.id===r.areaId);const k=a?a.nome:'N/A';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);}
-  const totOreD=d.reduce((s,r)=>s+(r.oreTotali||0),0);
-  const totOreV=v.reduce((s,r)=>s+(r.oreTotali||0),0);
-  const totMqD=d.reduce((s,r)=>s+(r.superficieMq||0),0);
-  const totMqV=v.reduce((s,r)=>s+(r.superficieMq||0),0);
-  const mD=byMese(d),mV=byMese(v);
-  const aD=byArea(d,db.areeDiserbo),aV=byArea(v,db.areeVerde);
-  const maxD=Math.max(...mD.map(x=>x[1]),1),maxV=Math.max(...mV.map(x=>x[1]),1);
-  const barD=mD.map(([m,n])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:65px;font-size:.78rem">'+m+'</span><div style="flex:1;height:20px;background:#f0f0f0;border-radius:4px;overflow:hidden"><div style="height:100%;background:var(--arancio);width:'+Math.round((n/maxD)*100)+'%"></div></div><span style="width:20px;font-size:.82rem;font-weight:700">'+n+'</span></div>').join('');
-  const barV=mV.map(([m,n])=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:65px;font-size:.78rem">'+m+'</span><div style="flex:1;height:20px;background:#f0f0f0;border-radius:4px;overflow:hidden"><div style="height:100%;background:var(--verde);width:'+Math.round((n/maxV)*100)+'%"></div></div><span style="width:20px;font-size:.82rem;font-weight:700">'+n+'</span></div>').join('');
+  const d=db.registrazioniDiserbo||[], v=db.registrazioniVerde||[];
+  const lD=db.lavorazioniDiserbo||[], lV=db.lavorazioniVerde||[];
+  const aD=db.areeDiserbo||[], aV=db.areeVerde||[];
+
+  // ---- Helper: mesi ultimi 6 ----
+  function byMese(regs){
+    const m={};
+    regs.forEach(r=>{if(r&&r.data){const k=r.data.slice(0,7);m[k]=(m[k]||0)+1;}});
+    return Object.entries(m).sort().slice(-6);
+  }
+  // ---- Helper: per area (top 5) ----
+  function byAreaTop(regs,aree){
+    const m={};
+    regs.forEach(r=>{if(!r||!r.areaId)return;const a=aree.find(x=>x.id===r.areaId);const k=a?a.nome:'N/D';m[k]=(m[k]||0)+1;});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  }
+  // ---- Helper: per lavorazione (top 6) ----
+  function byLav(regs,lavs){
+    const m={};
+    regs.forEach(r=>{if(!r||!r.lavorazioni)return;r.lavorazioni.forEach(lid=>{const l=lavs.find(x=>x.id===lid);const k=l?l.nome.slice(0,30):'N/D';m[k]=(m[k]||0)+1;});});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  }
+  // ---- Helper: per mese ore ----
+  function oreByMese(regs){
+    const m={};
+    regs.forEach(r=>{if(!r||!r.data)return;const k=r.data.slice(0,7);m[k]=(m[k]||0)+(r.oreTotali||0);});
+    return Object.entries(m).sort().slice(-6);
+  }
+  // ---- Helper: stato distribuzione ----
+  function byStato(regs){
+    const m={completata:0,'da-completare':0,sospesa:0};
+    regs.forEach(r=>{if(r&&r.stato&&m[r.stato]!==undefined)m[r.stato]++;});
+    return m;
+  }
+
+  // Totali
+  const totD=d.length, totV=v.length;
+  const oreD=d.reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
+  const oreV=v.reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
+  const mqD=d.reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
+  const mqV=v.reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
+
+  // Dati grafici
+  const mesiD=byMese(d), mesiV=byMese(v);
+  const areeD=byAreaTop(d,aD), areeV=byAreaTop(v,aV);
+  const lavD=byLav(d,lD), lavV=byLav(v,lV);
+  const oreD6=oreByMese(d), oreV6=oreByMese(v);
+  const statoD=byStato(d), statoV=byStato(v);
+
+  // ---- SVG Bar chart orizzontale ----
+  function barChart(items, color, unit){
+    if(!items.length) return '<p class="text-small" style="padding:8px">Nessun dato disponibile</p>';
+    const max=Math.max(...items.map(x=>x[1]),1);
+    return items.map(([lbl,val])=>{
+      const pct=Math.round((val/max)*100);
+      const short=lbl.length>28?lbl.slice(0,26)+'…':lbl;
+      return '<div style="margin-bottom:7px">'
+        +'<div style="display:flex;justify-content:space-between;margin-bottom:2px">'
+        +'<span style="font-size:.78rem;color:#444">'+short+'</span>'
+        +'<span style="font-size:.78rem;font-weight:700;color:'+color+'">'+val+(unit?' '+unit:'')+'</span>'
+        +'</div>'
+        +'<div style="height:16px;background:#f0f0f0;border-radius:8px;overflow:hidden">'
+        +'<div style="height:100%;background:'+color+';width:'+pct+'%;border-radius:8px;transition:width .5s"></div>'
+        +'</div></div>';
+    }).join('');
+  }
+
+  // ---- Donut SVG per stati ----
+  function donutChart(stato, colorMap){
+    const tot=stato.completata+stato['da-completare']+stato.sospesa;
+    if(tot===0) return '<p class="text-small" style="padding:8px;text-align:center">Nessun dato</p>';
+    const pct=k=>Math.round((stato[k]/tot)*100);
+    const items=[
+      {k:'completata',label:'Completati',color:colorMap[0],val:stato.completata},
+      {k:'da-completare',label:'Da completare',color:colorMap[1],val:stato['da-completare']},
+      {k:'sospesa',label:'Sospesi',color:colorMap[2],val:stato.sospesa}
+    ];
+    // Simple donut with CSS
+    const r=50,cx=60,cy=60,stroke=22;
+    const circ=2*Math.PI*r;
+    let offset=0;
+    let arcs='';
+    items.forEach(it=>{
+      const dash=(it.val/tot)*circ;
+      arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+it.color+'" stroke-width="'+stroke+'" stroke-dasharray="'+dash.toFixed(1)+' '+circ.toFixed(1)+'" stroke-dashoffset="-'+offset.toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')" />';
+      offset+=dash;
+    });
+    const legend=items.map(it=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:.78rem"><div style="width:10px;height:10px;border-radius:50%;background:'+it.color+'"></div>'+it.label+': <strong>'+it.val+'</strong> ('+pct(it.k)+'%)</div>').join('');
+    return '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">'
+      +'<svg width="120" height="120" viewBox="0 0 120 120">'+arcs
+      +'<text x="60" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">'+tot+'</text>'
+      +'<text x="60" y="72" text-anchor="middle" font-size="9" fill="#888">interventi</text>'
+      +'</svg>'
+      +'<div>'+legend+'</div></div>';
+  }
+
+  // ---- Trend mensile dual bar ----
+  function trendDual(mD,mV){
+    const allMesi=[...new Set([...mD.map(x=>x[0]),...mV.map(x=>x[0])])].sort().slice(-6);
+    if(!allMesi.length) return '<p class="text-small" style="padding:8px">Nessun dato</p>';
+    const mapD=Object.fromEntries(mD), mapV=Object.fromEntries(mV);
+    const maxVal=Math.max(...allMesi.map(m=>(mapD[m]||0)+(mapV[m]||0)),1);
+    return allMesi.map(m=>{
+      const vd=mapD[m]||0, vv=mapV[m]||0;
+      const pw=d=>Math.round((d/maxVal)*100);
+      const mLabel=m.slice(5)+'/'+m.slice(0,4);
+      return '<div style="margin-bottom:8px">'
+        +'<div style="font-size:.75rem;color:#666;margin-bottom:2px">'+mLabel+'</div>'
+        +'<div style="display:flex;gap:3px;height:18px">'
+        +'<div style="background:var(--arancio);width:'+pw(vd)+'%;border-radius:4px 0 0 4px;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+( vd||'')+'</span></div>'
+        +'<div style="background:var(--verde);width:'+pw(vv)+'%;border-radius:0 4px 4px 0;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+( vv||'')+'</span></div>'
+        +'</div></div>';
+    }).join('');
+  }
+
+  const noData = (totD+totV)===0;
+  const noDataMsg = '<div class="card" style="text-align:center;padding:30px"><div style="font-size:2.5rem;margin-bottom:12px">📊</div><p style="color:var(--grigio-mid)">Le statistiche si popolano automaticamente<br>man mano che vengono inserite le registrazioni.</p></div>';
+
   return '<div>'
-    +'<div class="stats-grid">'
-    +'<div class="stat-card"><div class="num">'+(d.length+v.length)+'</div><div class="lbl">N&deg; Interventi Totali Eseguiti</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+d.length+'</div><div class="lbl">Interventi Diserbo</div></div>'
-    +'<div class="stat-card"><div class="num">'+v.length+'</div><div class="lbl">Interventi Verde</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+(totOreD+totOreV).toFixed(1)+'</div><div class="lbl">Ore Uomo Totali</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(totMqD+totMqV).toLocaleString("it-IT")+'</div><div class="lbl">m&sup2; Totali Manutenuti</div></div>'
+    // KPI TOP
+    +'<div class="stats-grid" style="margin-bottom:16px">'
+    +'<div class="stat-card"><div class="num">'+(totD+totV)+'</div><div class="lbl">N° Interventi Totali</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+totD+'</div><div class="lbl">Interventi Diserbo</div></div>'
+    +'<div class="stat-card"><div class="num">'+totV+'</div><div class="lbl">Interventi Verde</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+(oreD+oreV).toFixed(1)+'</div><div class="lbl">Ore Uomo Totali</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(mqD+mqV).toLocaleString('it-IT')+'</div><div class="lbl">m² Manutenuti</div></div>'
+    +'<div class="stat-card" style="border-top-color:#8e44ad"><div class="num" style="color:#8e44ad">'+db.utenti.filter(u=>u.attivo&&u.ruolo==="operatore").length+'</div><div class="lbl">Operatori Attivi</div></div>'
     +'</div>'
+
+    +(noData ? noDataMsg :
+
+    // RIGA 1: Trend mensile + Stato interventi
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div class="card"><div class="card-title">📈 Trend mensile interventi</div>'
+    +'<div style="display:flex;gap:12px;margin-bottom:8px;font-size:.75rem">'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--arancio);border-radius:2px;display:inline-block"></span>Diserbo</span>'
+    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--verde);border-radius:2px;display:inline-block"></span>Verde</span>'
+    +'</div>'
+    +trendDual(mesiD,mesiV)
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-rows:1fr 1fr;gap:10px">'
+    +'<div class="card"><div class="card-title" style="font-size:.85rem">✂️ Stato Diserbo</div>'
+    +donutChart(statoD,['#27ae60','#f39c12','#e74c3c'])
+    +'</div>'
+    +'<div class="card"><div class="card-title" style="font-size:.85rem">🌿 Stato Verde</div>'
+    +donutChart(statoV,['#27ae60','#f39c12','#e74c3c'])
+    +'</div>'
+    +'</div>'
+    +'</div>'
+
+    // RIGA 2: Aree più attive
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-    +'<div class="card"><div class="card-title" style="color:var(--arancio)">&#9986;&#65039; Diserbo &mdash; Interventi per mese</div>'+(mD.length?barD:'<p class="text-small">Nessun dato</p>')
-    +'<div class="text-small mt-8">Ore tot: <strong>'+totOreD.toFixed(1)+'</strong> &nbsp;|&nbsp; m&sup2;: <strong>'+totMqD.toLocaleString("it-IT")+'</strong></div></div>'
-    +'<div class="card"><div class="card-title">&#127807; Verde &mdash; Interventi per mese</div>'+(mV.length?barV:'<p class="text-small">Nessun dato</p>')
-    +'<div class="text-small mt-8">Ore tot: <strong>'+totOreV.toFixed(1)+'</strong> &nbsp;|&nbsp; m&sup2;: <strong>'+totMqV.toLocaleString("it-IT")+'</strong></div></div>'
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Aree diserbo più attive</div>'
+    +barChart(areeD,'var(--arancio)','interv.')
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
-    +'<div class="card"><div class="card-title" style="color:var(--arancio)">&#9986;&#65039; Aree diserbo pi&ugrave; attive</div>'+(aD.length?aD.map(([n,c])=>'<div class="admin-item"><span>'+n+'</span><strong>'+c+' interventi</strong></div>').join(''):'<p class="text-small">Nessun dato</p>')+'</div>'
-    +'<div class="card"><div class="card-title">&#127807; Aree verde pi&ugrave; attive</div>'+(aV.length?aV.map(([n,c])=>'<div class="admin-item"><span>'+n+'</span><strong>'+c+' interventi</strong></div>').join(''):'<p class="text-small">Nessun dato</p>')+'</div>'
-    +'</div></div>';
+    +'<div class="card"><div class="card-title">🌿 Aree verde più attive</div>'
+    +barChart(areeV,'var(--verde)','interv.')
+    +'</div>'
+    +'</div>'
+
+    // RIGA 3: Lavorazioni più frequenti
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Lavorazioni diserbo più frequenti</div>'
+    +barChart(lavD,'#e67e22','volte')
+    +'</div>'
+    +'<div class="card"><div class="card-title">🌿 Lavorazioni verde più frequenti</div>'
+    +barChart(lavV,'#2ecc71','volte')
+    +'</div>'
+    +'</div>'
+
+    // RIGA 4: Ore per mese
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Ore uomo diserbo / mese</div>'
+    +barChart(oreD6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--arancio)','h')
+    +'<div class="text-small mt-8">Totale periodo: <strong>'+oreD.toFixed(1)+' ore</strong> &nbsp;|&nbsp; m²: <strong>'+mqD.toLocaleString('it-IT')+'</strong></div>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">🌿 Ore uomo verde / mese</div>'
+    +barChart(oreV6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--verde)','h')
+    +'<div class="text-small mt-8">Totale periodo: <strong>'+oreV.toFixed(1)+' ore</strong> &nbsp;|&nbsp; m²: <strong>'+mqV.toLocaleString('it-IT')+'</strong></div>'
+    +'</div>'
+    +'</div>'
+
+    )
+    +'</div>';
 }
 
 // ============ ADMIN ============

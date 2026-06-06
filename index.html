@@ -104,6 +104,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f0;color:var(--
 .print-header{display:none;text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--verde);}
 .print-header img{height:55px;margin-bottom:6px;}
 .print-header .intestazione{font-size:.68rem;color:#555;line-height:1.6;margin-top:6px;}
+/* BOZZE E NOTIFICHE */
+.badge-bozza{background:#fff3cd;color:#856404;border:1.5px solid #ffc107;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
+.badge-inviato{background:#d1ecf1;color:#0c5460;border:1.5px solid #17a2b8;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
+.badge-approvato{background:#d4efdf;color:#1e8449;border:1.5px solid #27ae60;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
+.badge-bloccata{background:#f8d7da;color:#721c24;border:1.5px solid #f5c6cb;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
+.notif-badge{background:var(--rosso);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;margin-left:4px;}
+.notif-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:10px;border-left:4px solid var(--giallo);}
+.notif-card.urgente{border-left-color:var(--rosso);}
+.notif-card.ok{border-left-color:#27ae60;}
+.bozza-row{background:#fffde7!important;}
+.bozza-row:hover td{background:#fff9c4!important;}
+.btn-bozza{background:#ffc107;color:#333;border:none;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600;cursor:pointer;}
+.btn-bozza:hover{background:#e0a800;}
+.ore-warning{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:.85rem;color:#856404;margin-bottom:8px;}
+.ore-ok{background:#d4efdf;border:1px solid #27ae60;border-radius:6px;padding:8px 12px;font-size:.85rem;color:#1e8449;margin-bottom:8px;}
 </style>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -154,8 +169,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f0;color:var(--
 </div>
 
 <script>
-// ============ DATA ============
-const LOGO_B64 = "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";
+// ============ LOGO ============
+const LOGO_B64 = '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';
+
+// ============ DATABASE ============
 const DB_KEY = 'somica_vd_db_v2';
 const LAVORAZIONI_NO_MQ_VERDE = ['lv17','lv17_2','lv18','lv19','lv20'];
 const ruoliLabel = {admin:'Amministratore',consultazione:'Consultazione',operatore:'Operatore'};
@@ -167,9 +184,7 @@ function defaultDB(){
       {id:'u2',nome:'Ufficio Tecnico',cognome:'Comune Carbonia',username:'utcarbonia',password:'utc2024',ruolo:'consultazione',attivo:true},
       {id:'u3',nome:'Mario',cognome:'Rossi',username:'mrossi',password:'op2024',ruolo:'operatore',attivo:true}
     ],
-    settoriDiserbo:[
-      {id:'sd1',nome:'Settore 1 Centro Citt\u00e0',descrizione:'Centro urbano',attivo:true}
-    ],
+    settoriDiserbo:[{id:'sd1',nome:'Settore 1 Centro Citt\u00e0',descrizione:'Centro urbano',attivo:true}],
     areeDiserbo:[
       {id:'ad1',settoreId:'sd1',nome:'Via Verona',tipologia:'via',superficie:1000,note:'',attivo:true},
       {id:'ad2',settoreId:'sd1',nome:'Via Deledda',tipologia:'via',superficie:500,note:'',attivo:true}
@@ -212,18 +227,13 @@ function defaultDB(){
       {id:'lv19',nome:'Manutenzione impianto irrigazione (atto vandalico)',attivo:true},
       {id:'lv20',nome:'Intervento extra canone (da compensarsi a misura)',attivo:true}
     ],
-    registrazioniVerde:[]
+    registrazioniVerde:[],
+    notifiche:[],
+    approvazioniOre:[]
   };
 }
 
-// ============ FIREBASE CONFIG ============
-// ISTRUZIONI: Sostituisci i valori sotto con le credenziali del tuo progetto Firebase
-// 1. Vai su https://console.firebase.google.com
-// 2. Crea un progetto gratuito
-// 3. Aggiungi un'app Web, copia le credenziali qui sotto
-// 4. In Firebase Console > Realtime Database > Regole, imposta:
-//    { "rules": { ".read": "auth != null", ".write": "auth != null" } }
-//    oppure per test: { "rules": { ".read": true, ".write": true } }
+// ============ FIREBASE ============
 const FIREBASE_CONFIG = {
  apiKey: "AIzaSyCE9yRxeYDsV2gx0ylRVFwK1c3OKaWkHY0",
     authDomain: "somica-verde-diserbo.firebaseapp.com",
@@ -234,92 +244,75 @@ const FIREBASE_CONFIG = {
     appId: "1:1025583641343:web:f0772ec6c659c77e9bd2ca",
     measurementId: "G-V150K7B2YK"
 };
-
-let firebaseDB = null;
-let firebaseRef = null;
-let useFirebase = false;
-
+let firebaseDB=null,firebaseRef=null,useFirebase=false;
 function initFirebase(){
-  try {
-    if(typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey !== 'INSERISCI_QUI_LA_TUA_API_KEY'){
+  try{
+    if(typeof firebase!=='undefined' && FIREBASE_CONFIG.apiKey!=='INSERISCI_QUI_LA_TUA_API_KEY'){
       firebase.initializeApp(FIREBASE_CONFIG);
-      firebaseDB = firebase.database();
-      firebaseRef = firebaseDB.ref('somica_vd');
-      useFirebase = true;
-      // Listen for real-time updates
-      firebaseRef.on('value', snapshot => {
-        const data = snapshot.val();
+      firebaseDB=firebase.database();
+      firebaseRef=firebaseDB.ref('somica_vd');
+      useFirebase=true;
+      firebaseRef.on('value',snapshot=>{
+        const data=snapshot.val();
         if(data){
-          // Merge: preserva struttura default se mancano chiavi
-          const def = defaultDB();
-          db = data;
-          // Assicura che le array chiave esistano sempre
+          const def=defaultDB();
+          db=data;
           ['utenti','settoriDiserbo','areeDiserbo','lavorazioniDiserbo','registrazioniDiserbo',
-           'settoriVerde','areeVerde','lavorazioniVerde','registrazioniVerde'].forEach(k=>{
-            if(!db[k]) db[k] = def[k];
+           'settoriVerde','areeVerde','lavorazioniVerde','registrazioniVerde','notifiche','approvazioniOre'].forEach(k=>{
+            if(!db[k]) db[k]=def[k];
           });
         } else {
-          // Firebase vuoto: carica dati di default e li salva sul cloud
-          db = defaultDB();
+          db=defaultDB();
           firebaseRef.set(db);
         }
-        try{localStorage.setItem(DB_KEY, JSON.stringify(db));}catch(e){}
-        if(currentUser && currentRoute) refreshCurrentView();
+        try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
+        if(currentUser&&currentRoute) refreshCurrentView();
       });
-      showBanner('&#9925; Database cloud attivo — dati condivisi tra tutti gli utenti', 'success');
-      console.log('Firebase connected');
+      showBanner('\u2601\ufe0f Database cloud attivo — dati condivisi tra tutti gli utenti','success');
     } else {
-      showBanner('&#128274; Modalità locale — configura Firebase per database condiviso', 'warning');
+      showBanner('\ud83d\udd12 Modalit\u00e0 locale — configura Firebase per database condiviso','warning');
     }
-  } catch(e) {
-    console.warn('Firebase init failed:', e);
-    showBanner('&#9888;&#65039; Errore Firebase — uso database locale', 'error');
+  }catch(e){
+    console.warn('Firebase init failed:',e);
+    showBanner('\u26a0\ufe0f Errore Firebase — uso database locale','error');
   }
 }
-
 function refreshCurrentView(){
   if(!currentUser) return;
-  const c = document.getElementById('main-content');
+  const c=document.getElementById('main-content');
   if(!c) return;
-  // Only refresh archivio and statistiche (forms should not auto-refresh)
-  if(currentRoute === 'archivio-diserbo') renderTabella('diserbo');
-  else if(currentRoute === 'archivio-verde') renderTabella('verde');
-  else if(currentRoute === 'statistiche'){ c.innerHTML = renderStatistiche(); }
-  else if(currentRoute === 'home'){ c.innerHTML = renderHome(); }
+  if(currentRoute==='archivio-diserbo') renderTabella('diserbo');
+  else if(currentRoute==='archivio-verde') renderTabella('verde');
+  else if(currentRoute==='statistiche'){c.innerHTML=renderStatistiche();}
+  else if(currentRoute==='home'){c.innerHTML=renderHome();}
+  else if(currentRoute==='notifiche'){c.innerHTML=renderNotifiche();}
+  else if(currentRoute==='mie-registrazioni'){c.innerHTML=renderMieRegistrazioni();}
+  setTimeout(()=>aggiornaBadgeNotifiche(),100);
 }
-
-function showBanner(msg, type){
-  const colors = {success:'#d4efdf',warning:'#fef9e7',error:'#fadbd8'};
-  const text = {success:'#1e8449',warning:'#7d6608',error:'#922b21'};
-  let b = document.getElementById('firebase-banner');
-  if(!b){ b = document.createElement('div'); b.id='firebase-banner'; b.style.cssText='position:fixed;bottom:12px;right:12px;padding:10px 16px;border-radius:8px;font-size:.82rem;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:300px;'; document.body.appendChild(b); }
-  b.style.background = colors[type]||colors.warning;
-  b.style.color = text[type]||text.warning;
-  b.innerHTML = msg;
-  if(type==='success') setTimeout(()=>{if(b)b.remove();}, 4000);
+function showBanner(msg,type){
+  const colors={success:'#d4efdf',warning:'#fef9e7',error:'#fadbd8'};
+  const text={success:'#1e8449',warning:'#7d6608',error:'#922b21'};
+  let b=document.getElementById('firebase-banner');
+  if(!b){b=document.createElement('div');b.id='firebase-banner';b.style.cssText='position:fixed;bottom:12px;right:12px;padding:10px 16px;border-radius:8px;font-size:.82rem;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:320px;';document.body.appendChild(b);}
+  b.style.background=colors[type]||colors.warning;
+  b.style.color=text[type]||text.warning;
+  b.innerHTML=msg;
+  if(type==='success') setTimeout(()=>{if(b)b.remove();},4000);
 }
-
-function loadDB(){
-  try{const d=localStorage.getItem(DB_KEY);if(d)return JSON.parse(d);}catch(e){}
-  return defaultDB();
-}
-
+function loadDB(){try{const d=localStorage.getItem(DB_KEY);if(d)return JSON.parse(d);}catch(e){}return defaultDB();}
 async function saveDB(){
-  // Always save locally first
   try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
-  // If Firebase is configured, also save to cloud
-  if(useFirebase && firebaseRef){
-    try{
-      await firebaseRef.set(db);
-    } catch(e){
-      console.warn('Firebase save error:', e);
-      showBanner('&#9888;&#65039; Errore salvataggio cloud — salvato solo in locale', 'error');
-    }
+  if(useFirebase&&firebaseRef){
+    try{await firebaseRef.set(db);}catch(e){console.warn('Firebase save error:',e);}
   }
 }
-
 let db=loadDB();
 let currentUser=null;
+
+// ============ UTILITY BOZZE ============
+function oggi(){return new Date().toISOString().slice(0,10);}
+function isGiornoLavorativo(data){const d=new Date(data);const dow=d.getDay();return dow>=1&&dow<=5;}
+function isBozzaBloccata(r){return r.statoInvio==='bozza'&&r.data<oggi();}
 
 // ============ AUTH ============
 function doLogin(){
@@ -346,58 +339,95 @@ document.addEventListener('keydown',function(e){if(e.key==='Enter'&&!document.ge
 
 // ============ NAV ============
 const navConfig={
-  admin:[{id:'home',l:'&#127968; Home'},{id:'registra-diserbo',l:'&#9986;&#65039; Reg. Diserbo'},{id:'registra-verde',l:'&#127807; Reg. Verde'},{id:'archivio-diserbo',l:'&#128203; Archivio Diserbo'},{id:'archivio-verde',l:'&#128203; Archivio Verde'},{id:'statistiche',l:'&#128202; Statistiche'},{id:'admin',l:'&#9881;&#65039; Amministrazione'}],
+  admin:[{id:'home',l:'&#127968; Home'},{id:'notifiche',l:'&#128276; Notifiche'},{id:'registra-diserbo',l:'&#9986;&#65039; Reg. Diserbo'},{id:'registra-verde',l:'&#127807; Reg. Verde'},{id:'archivio-diserbo',l:'&#128203; Archivio Diserbo'},{id:'archivio-verde',l:'&#128203; Archivio Verde'},{id:'statistiche',l:'&#128202; Statistiche'},{id:'admin',l:'&#9881;&#65039; Amministrazione'}],
   consultazione:[{id:'home',l:'&#127968; Home'},{id:'archivio-diserbo',l:'&#128203; Archivio Diserbo'},{id:'archivio-verde',l:'&#128203; Archivio Verde'},{id:'statistiche',l:'&#128202; Statistiche'}],
-  operatore:[{id:'home',l:'&#127968; Home'},{id:'registra-diserbo',l:'&#9986;&#65039; Registra Diserbo'},{id:'registra-verde',l:'&#127807; Registra Verde'}]
+  operatore:[{id:'home',l:'&#127968; Home'},{id:'registra-diserbo',l:'&#9986;&#65039; Registra Diserbo'},{id:'registra-verde',l:'&#127807; Registra Verde'},{id:'mie-registrazioni',l:'&#128203; Le mie reg.'}]
 };
 let currentRoute='home';
-
 function buildNav(){
   const tabs=navConfig[currentUser.ruolo]||[];
-  document.getElementById('main-nav').innerHTML=tabs.map(t=>'<button class="nav-tab" data-route="'+t.id+'" onclick="routeTo(this.dataset.route)">'+t.l+'</button>').join('');
+  document.getElementById('main-nav').innerHTML=tabs.map(t=>'<button class="nav-tab" data-route="'+t.id+'" onclick="routeTo(\''+t.id+'\')">'+t.l+'</button>').join('');
 }
 function routeTo(r){
   currentRoute=r;
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active',t.dataset.route===r));
   const c=document.getElementById('main-content');
-  if(r==='home')c.innerHTML=renderHome();
-  else if(r==='registra-diserbo')c.innerHTML=renderFormDiserbo();
-  else if(r==='registra-verde')c.innerHTML=renderFormVerde();
+  if(r==='home') c.innerHTML=renderHome();
+  else if(r==='notifiche') c.innerHTML=renderNotifiche();
+  else if(r==='mie-registrazioni') c.innerHTML=renderMieRegistrazioni();
+  else if(r==='registra-diserbo') c.innerHTML=renderFormDiserbo();
+  else if(r==='registra-verde') c.innerHTML=renderFormVerde();
   else if(r==='archivio-diserbo'){c.innerHTML=renderArchivio('diserbo');setTimeout(()=>renderTabella('diserbo'),50);}
   else if(r==='archivio-verde'){c.innerHTML=renderArchivio('verde');setTimeout(()=>renderTabella('verde'),50);}
-  else if(r==='statistiche')c.innerHTML=renderStatistiche();
-  else if(r==='admin')c.innerHTML=renderAdmin();
-  if(r==='registra-diserbo')setTimeout(()=>{const el=document.getElementById('d-settore');if(el&&el.value)aggiornaAreaDiserbo();},80);
+  else if(r==='statistiche') c.innerHTML=renderStatistiche();
+  else if(r==='admin') c.innerHTML=renderAdmin();
+  if(r==='registra-diserbo') setTimeout(()=>{const el=document.getElementById('d-settore');if(el&&el.value)aggiornaAreaDiserbo();},80);
+  setTimeout(()=>aggiornaBadgeNotifiche(),100);
 }
 
 // ============ HOME ============
 function renderHome(){
   if(currentUser.ruolo==='operatore'){
+    const o=oggi();
+    const bozzeOggi=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
+      .filter(r=>r.data===o&&r.operatori&&r.operatori.includes(currentUser.id)&&r.statoInvio==='bozza');
+    const inviatOggi=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
+      .filter(r=>r.data===o&&r.operatori&&r.operatori.includes(currentUser.id)&&r.statoInvio==='inviato');
+    let bozzeHtml='';
+    if(bozzeOggi.length){
+      const righe=bozzeOggi.map(function(r){
+        const isD=r.id.startsWith('rd');
+        const aree=isD?db.areeDiserbo:db.areeVerde;
+        const a=aree.find(x=>x.id===r.areaId);
+        const bloccata=isBozzaBloccata(r);
+        const mod=isD?'diserbo':'verde';
+        const btns=bloccata
+          ? '<span class="badge-bloccata">Bloccata</span>'
+          : '<button class="btn btn-grigio btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998;</button>'
+            +'<button class="btn btn-verde btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="inviaDefinitivoSingolo(this.dataset.mod,this.dataset.id)">&#10003; Invia</button>';
+        return '<div class="admin-item">'
+          +'<span class="item-name">'+(isD?'&#9986;&#65039;':'&#127807;')+' '+(a?a.nome:'Area')+' &mdash; '+r.data+'</span>'
+          +'<div style="display:flex;gap:6px;align-items:center">'+btns+'</div>'
+          +'</div>';
+      }).join('');
+      const tutteInviabili=bozzeOggi.length>1&&!bozzeOggi.some(r=>isBozzaBloccata(r));
+      bozzeHtml='<div class="card" style="border-left:4px solid #ffc107;margin-top:14px">'
+        +'<div class="card-title" style="color:#856404">&#128221; Bozze di oggi ('+bozzeOggi.length+')</div>'
+        +righe
+        +(tutteInviabili?'<div style="margin-top:10px"><button class="btn btn-verde" onclick="inviaDefinitvioTutte()">&#10003; Invia tutto ('+bozzeOggi.length+')</button></div>':'')
+        +'</div>';
+    }
+    if(inviatOggi.length){
+      bozzeHtml+='<div class="ore-ok" style="margin-top:10px">&#9989; '+inviatOggi.length+' registrazione/i inviate oggi.</div>';
+    }
     return '<div class="card"><div class="card-title">Benvenuto, '+currentUser.nome+' '+currentUser.cognome+'</div>'
-    +'<p class="text-small" style="margin-bottom:16px">Seleziona il tipo di intervento da registrare:</p>'
-    +'<div class="op-big-grid">'
-    +'<div class="op-big-btn" onclick="navGo(this)" data-r="registra-diserbo"><span class="icon">&#9986;&#65039;</span><h3>Diserbo Superfici</h3><p class="text-small">Registra intervento diserbo</p></div>'
-    +'<div class="op-big-btn" onclick="navGo(this)" data-r="registra-verde"><span class="icon">&#127807;</span><h3>Verde Pubblico</h3><p class="text-small">Registra manutenzione verde</p></div>'
-    +'</div></div>';
+      +'<p class="text-small" style="margin-bottom:16px">Seleziona il tipo di intervento:</p>'
+      +'<div class="op-big-grid">'
+      +'<div class="op-big-btn" onclick="routeTo(\'registra-diserbo\')"><span class="icon">&#9986;&#65039;</span><h3>Diserbo Superfici</h3></div>'
+      +'<div class="op-big-btn" onclick="routeTo(\'registra-verde\')"><span class="icon">&#127807;</span><h3>Verde Pubblico</h3></div>'
+      +'</div>'+bozzeHtml+'</div>';
   }
-  const totD=db.registrazioniDiserbo.length,totV=db.registrazioniVerde.length;
-  const oreD=db.registrazioniDiserbo.reduce((s,r)=>s+(r.oreTotali||0),0);
-  const oreV=db.registrazioniVerde.reduce((s,r)=>s+(r.oreTotali||0),0);
-  const mqD=db.registrazioniDiserbo.reduce((s,r)=>s+(r.superficieMq||0),0);
-  const mqV=db.registrazioniVerde.reduce((s,r)=>s+(r.superficieMq||0),0);
+  const totD=(db.registrazioniDiserbo||[]).length,totV=(db.registrazioniVerde||[]).length;
+  const oreD=(db.registrazioniDiserbo||[]).reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
+  const oreV=(db.registrazioniVerde||[]).reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
+  const mqD=(db.registrazioniDiserbo||[]).reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
+  const mqV=(db.registrazioniVerde||[]).reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
+  const pendenti=(db.notifiche||[]).filter(n=>!n.letto).length;
   const cRole=currentUser.ruolo;
   return '<div class="stats-grid">'
-    +'<div class="stat-card"><div class="num">'+(totD+totV)+'</div><div class="lbl">N° Interventi Eseguiti</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+totD+'</div><div class="lbl">Interventi Diserbo</div></div>'
-    +'<div class="stat-card"><div class="num">'+totV+'</div><div class="lbl">Interventi Verde</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+(oreD+oreV).toFixed(1)+'</div><div class="lbl">Ore Uomo Totali</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(mqD+mqV).toLocaleString("it-IT")+'</div><div class="lbl">m&sup2; Manutenuti</div></div>'
+    +'<div class="stat-card"><div class="num">'+(totD+totV)+'</div><div class="lbl">N&deg; Interventi</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+totD+'</div><div class="lbl">Diserbo</div></div>'
+    +'<div class="stat-card"><div class="num">'+totV+'</div><div class="lbl">Verde</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+(oreD+oreV).toFixed(1)+'</div><div class="lbl">Ore Uomo</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(mqD+mqV).toLocaleString('it-IT')+'</div><div class="lbl">m&sup2;</div></div>'
+    +(pendenti>0?'<div class="stat-card" style="border-top-color:var(--rosso)"><div class="num" style="color:var(--rosso)">'+pendenti+'</div><div class="lbl">Notifiche</div></div>':'')
     +'</div>'
     +'<div class="module-selector">'
-    +(cRole!=='consultazione'?'<div class="module-card" onclick="navGo(this)" data-r="registra-diserbo"><div class="icon">&#9986;&#65039;</div><h3>Nuova Registrazione Diserbo</h3></div>'
-    +'<div class="module-card" onclick="navGo(this)" data-r="registra-verde"><div class="icon">&#127807;</div><h3>Nuova Registrazione Verde</h3></div>':'')
-    +'<div class="module-card" onclick="navGo(this)" data-r="archivio-diserbo"><div class="icon">&#128203;</div><h3>Archivio Diserbo</h3></div>'
-    +'<div class="module-card" onclick="navGo(this)" data-r="archivio-verde"><div class="icon">&#128203;</div><h3>Archivio Verde</h3></div>'
+    +(cRole!=='consultazione'?'<div class="module-card" onclick="routeTo(\'registra-diserbo\')"><div class="icon">&#9986;&#65039;</div><h3>Nuova Reg. Diserbo</h3></div>'
+    +'<div class="module-card" onclick="routeTo(\'registra-verde\')"><div class="icon">&#127807;</div><h3>Nuova Reg. Verde</h3></div>':'')
+    +'<div class="module-card" onclick="routeTo(\'archivio-diserbo\')"><div class="icon">&#128203;</div><h3>Archivio Diserbo</h3></div>'
+    +'<div class="module-card" onclick="routeTo(\'archivio-verde\')"><div class="icon">&#128203;</div><h3>Archivio Verde</h3></div>'
+    +(cRole==='admin'?'<div class="module-card" onclick="routeTo(\'notifiche\')" style="border-color:var(--rosso)"><div class="icon">&#128276;</div><h3>Notifiche'+(pendenti>0?' <span class="notif-badge">'+pendenti+'</span>':'')+'</h3></div>':'')
     +'</div>';
 }
 
@@ -407,54 +437,60 @@ function renderFormDiserbo(pf){
   const ops=db.utenti.filter(u=>u.attivo&&u.ruolo==='operatore');
   const sett=db.settoriDiserbo.filter(s=>s.attivo);
   const p=pf||{};
-  const today=p.data||new Date().toISOString().slice(0,10);
-  return '<div class="card"><div class="card-title">&#9986;&#65039; Registrazione Intervento Diserbo Superfici Non Pavimentate</div>'
+  const today=p.data||oggi();
+  const editMode=!!(pf&&pf.id);
+  return '<div class="card"><div class="card-title">&#9986;&#65039; Registrazione Intervento Diserbo</div>'
     +'<div class="form-group"><label>&#128197; Data intervento *</label>'
-    +'<input type="date" id="d-data" value="'+today+'" max="'+new Date().toISOString().slice(0,10)+'"></div>'
-    +'<div class="reg-form"><div class="form-row">'
+    +'<input type="date" id="d-data" value="'+today+'" max="'+oggi()+'"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
     +'<div class="form-group"><label>&#128205; Settore *</label>'
     +'<select id="d-settore" onchange="aggiornaAreaDiserbo()">'
-    +'<option value="">-- Seleziona settore --</option>'
+    +'<option value="">-- Settore --</option>'
     +sett.map(s=>'<option value="'+s.id+'"'+(p.settoreId===s.id?' selected':'')+'>'+s.nome+'</option>').join('')
     +'</select></div>'
-    +'<div class="form-group"><label>&#128506;&#65039; Area specifica *</label>'
+    +'<div class="form-group"><label>&#128506;&#65039; Area *</label>'
     +'<select id="d-area"><option value="">-- Prima seleziona settore --</option></select></div>'
-    +'</div></div>'
-    +'<div class="form-group"><label>&#128119; Operatori coinvolti * <span class="text-small">(seleziona tutti i partecipanti)</span></label>'
+    +'</div>'
+    +'<div class="form-group"><label>&#128119; Operatori * <span class="text-small">(seleziona tutti)</span></label>'
     +'<div class="checklist" id="d-operatori">'
     +ops.map(o=>'<label><input type="checkbox" value="'+o.id+'"'+(p.operatori&&p.operatori.includes(o.id)?' checked':'')+'>'+' '+o.nome+' '+o.cognome+'</label>').join('')
     +'</div></div>'
-    +'<div class="form-group"><label>&#128295; Lavorazioni eseguite * <span class="text-small">(una o pi&ugrave;)</span></label>'
+    +'<div class="form-group"><label>&#128295; Lavorazioni *</label>'
     +'<div class="checklist" id="d-lavorazioni">'
     +lav.map(l=>'<label><input type="checkbox" value="'+l.id+'"'+(p.lavorazioni&&p.lavorazioni.includes(l.id)?' checked':'')+'>'+' '+l.nome+'</label>').join('')
     +'</div></div>'
-    +'<div class="reg-form"><div class="form-row">'
-    +'<div class="form-group"><label>&#9201;&#65039; Ore lavorate (per operatore)</label>'
-    +'<input type="number" id="d-ore" min="0.5" max="24" step="0.5" placeholder="es. 4" value="'+(p.ore||'')+'"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div class="form-group"><label>&#9201;&#65039; Ore/operatore</label>'
+    +'<input type="number" id="d-ore" min="0.5" max="24" step="0.5" placeholder="es. 8" value="'+(p.ore||'')+'"></div>'
     +'<div class="form-group"><label>&#128202; Stato lavorazione *</label>'
     +'<div class="stato-flags">'
     +'<label class="stato-flag"><input type="radio" name="d-stato-r" value="completata"'+((!p.stato||p.stato==="completata")?" checked":"")+'>'+' &#9989; Completata</label>'
     +'<label class="stato-flag"><input type="radio" name="d-stato-r" value="da-completare"'+(p.stato==="da-completare"?" checked":"")+'>'+' &#128260; Da completare</label>'
     +'<label class="stato-flag"><input type="radio" name="d-stato-r" value="sospesa"'+(p.stato==="sospesa"?" checked":"")+'>'+' &#9888;&#65039; Sospesa</label>'
-    +'</div></div></div></div>'
-    +'<div class="form-group"><label>&#128221; Note e segnalazioni</label>'
-    +'<textarea id="d-note" rows="3" placeholder="Segnalazioni, osservazioni...">'+(p.note||'')+'</textarea></div>'
+    +'</div></div></div>'
+    +'<div class="form-group"><label>&#128221; Note</label>'
+    +'<textarea id="d-note" rows="3" placeholder="Segnalazioni...">'+(p.note||'')+'</textarea></div>'
+    +'<div class="form-group mt-8"><label>&#128228; Modalit&agrave; salvataggio</label>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:2px solid #ffc107;border-radius:8px;background:#fffde7">'
+    +'<input type="radio" name="d-inv" value="bozza"'+(editMode?'':' checked')+'> &#128221; Bozza</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:2px solid var(--verde);border-radius:8px;background:#e8f5ec">'
+    +'<input type="radio" name="d-inv" value="inviato"'+(editMode?' checked':'')+'> &#10003; Invia definitivamente</label>'
+    +'</div></div>'
     +'<div class="flex-row mt-8">'
-    +'<button class="btn btn-verde btn-lg" onclick="salvaDiserbo('+(pf?("'"+pf.id+"'"): 'null')+')">&#128190; Salva Registrazione</button>'
-    +'<button class="btn btn-grigio" onclick="navGo(this)" data-r="home">Annulla</button>'
+    +'<button class="btn btn-verde btn-lg" onclick="salvaDiserbo('+(pf?"'"+pf.id+"'":'null')+')">&#128190; Salva</button>'
+    +'<button class="btn btn-grigio" onclick="routeTo(\'home\')">Annulla</button>'
     +'</div>'
     +'<div id="d-msg" class="mt-8"></div></div>';
 }
-
 function aggiornaAreaDiserbo(preAid){
   const sid=document.getElementById('d-settore').value;
   const sel=document.getElementById('d-area');
   const aree=db.areeDiserbo.filter(a=>a.settoreId===sid&&a.attivo);
   sel.innerHTML=aree.length
-    ?'<option value="">-- Seleziona area --</option>'+aree.map(a=>'<option value="'+a.id+'"'+(preAid&&preAid===a.id?' selected':'')+'>'+a.nome+' ('+a.superficie+' mq)</option>').join('')
-    :'<option value="">Nessuna area disponibile</option>';
+    ?'<option value="">-- Area --</option>'+aree.map(a=>'<option value="'+a.id+'"'+(preAid&&preAid===a.id?' selected':'')+'>'+a.nome+' ('+a.superficie+' mq)</option>').join('')
+    :'<option value="">Nessuna area</option>';
 }
-
 function salvaDiserbo(editId){
   const data=document.getElementById('d-data').value;
   const sid=document.getElementById('d-settore').value;
@@ -464,22 +500,27 @@ function salvaDiserbo(editId){
   const ore=parseFloat(document.getElementById('d-ore').value)||0;
   const stato=document.querySelector('input[name="d-stato-r"]:checked');
   const note=document.getElementById('d-note').value.trim();
+  const invSel=document.querySelector('input[name="d-inv"]:checked');
+  const statoInvio=invSel?invSel.value:'bozza';
   const msg=document.getElementById('d-msg');
   if(!data){msg.innerHTML='<div class="alert alert-error">Inserire la data.</div>';return;}
   if(!sid||!aid){msg.innerHTML='<div class="alert alert-error">Selezionare settore e area.</div>';return;}
   if(!operatori.length){msg.innerHTML='<div class="alert alert-error">Selezionare almeno un operatore.</div>';return;}
   if(!lavorazioni.length){msg.innerHTML='<div class="alert alert-error">Selezionare almeno una lavorazione.</div>';return;}
-  if(!stato){msg.innerHTML='<div class="alert alert-error">Indicare lo stato della lavorazione.</div>';return;}
+  if(!stato){msg.innerHTML='<div class="alert alert-error">Indicare lo stato.</div>';return;}
   const area=db.areeDiserbo.find(a=>a.id===aid);
-  const rec={data,settoreId:sid,areaId:aid,operatori,lavorazioni,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq:area?area.superficie:0};
+  const rec={data,settoreId:sid,areaId:aid,operatori,lavorazioni,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq:area?area.superficie:0,statoInvio};
   if(editId&&editId!=='null'){
     const idx=db.registrazioniDiserbo.findIndex(r=>r.id===editId);
-    if(idx>=0)db.registrazioniDiserbo[idx]={...db.registrazioniDiserbo[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
-  }else{
+    if(idx>=0) db.registrazioniDiserbo[idx]={...db.registrazioniDiserbo[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
+  } else {
     db.registrazioniDiserbo.push({id:'rd'+Date.now(),creato:new Date().toISOString(),creatoDa:currentUser.id,...rec});
   }
+  if(statoInvio==='inviato') generaNotificheApprovazione(rec.id||'rd'+Date.now());
+  generaNotificheOre(data);
   saveDB();
-  msg.innerHTML='<div class="alert alert-success">&#9989; Registrazione salvata con successo!</div>';
+  const lbl=statoInvio==='inviato'?'Registrazione inviata!':'Bozza salvata!';
+  msg.innerHTML='<div class="alert alert-success">&#9989; '+lbl+'</div>';
   setTimeout(()=>routeTo(currentUser.ruolo==='operatore'?'home':'archivio-diserbo'),1300);
 }
 
@@ -489,43 +530,50 @@ function renderFormVerde(pf){
   const ops=db.utenti.filter(u=>u.attivo&&u.ruolo==='operatore');
   const aree=db.areeVerde.filter(a=>a.attivo);
   const p=pf||{};
-  const today=p.data||new Date().toISOString().slice(0,10);
-  return '<div class="card"><div class="card-title">&#127807; Registrazione Intervento Verde Pubblico Attrezzato</div>'
-    +'<div class="form-group"><label>&#128197; Data intervento *</label>'
-    +'<input type="date" id="v-data" value="'+today+'" max="'+new Date().toISOString().slice(0,10)+'"></div>'
-    +'<div class="form-group"><label>&#128506;&#65039; Area di intervento * <span class="text-small">(campo obbligatorio)</span></label>'
+  const today=p.data||oggi();
+  const editMode=!!(pf&&pf.id);
+  return '<div class="card"><div class="card-title">&#127807; Registrazione Intervento Verde Pubblico</div>'
+    +'<div class="form-group"><label>&#128197; Data *</label>'
+    +'<input type="date" id="v-data" value="'+today+'" max="'+oggi()+'"></div>'
+    +'<div class="form-group"><label>&#128506;&#65039; Area *</label>'
     +'<select id="v-area">'
-    +'<option value="">-- Seleziona area verde --</option>'
-    +aree.map(a=>{const sv=db.settoriVerde.find(s=>s.id===a.settoreId);return '<option value="'+a.id+'"'+(p.areaId===a.id?' selected':'')+'>'+a.nome+' &mdash; '+(sv?sv.nome:'')+'  ('+a.superficie+' mq)</option>';}).join('')
+    +'<option value="">-- Seleziona area --</option>'
+    +aree.map(a=>{const sv=db.settoriVerde.find(s=>s.id===a.settoreId);return '<option value="'+a.id+'"'+(p.areaId===a.id?' selected':'')+'>'+a.nome+' &mdash; '+(sv?sv.nome:'')+' ('+a.superficie+' mq)</option>';}).join('')
     +'</select></div>'
-    +'<div class="form-group"><label>&#128119; Operatori coinvolti * <span class="text-small">(seleziona tutti i partecipanti)</span></label>'
+    +'<div class="form-group"><label>&#128119; Operatori *</label>'
     +'<div class="checklist" id="v-operatori">'
     +ops.map(o=>'<label><input type="checkbox" value="'+o.id+'"'+(p.operatori&&p.operatori.includes(o.id)?' checked':'')+'>'+' '+o.nome+' '+o.cognome+'</label>').join('')
     +'</div></div>'
-    +'<div class="form-group"><label>&#128295; Lavorazioni eseguite * <span class="text-small">(Verifica irrigazione pu&ograve; essere inserita 2 volte)</span></label>'
+    +'<div class="form-group"><label>&#128295; Lavorazioni * <span class="text-small">(Verifica irrigazione pu&ograve; essere 2 volte)</span></label>'
     +'<div class="checklist" id="v-lavorazioni">'
     +lav.map(l=>'<label><input type="checkbox" value="'+l.id+'" onchange="aggiornaCampiVerde()">'+' '+l.nome+'</label>').join('')
     +'<label id="verifica2-row" class="hidden"><input type="checkbox" value="lv17_2" onchange="aggiornaCampiVerde()">'+' 2&ordf; Verifica impianto irrigazione</label>'
     +'</div>'
     +'<div id="v-campi-extra" class="mt-8"></div></div>'
-    +'<div class="reg-form"><div class="form-row">'
-    +'<div class="form-group"><label>&#9201;&#65039; Ore lavorate (per operatore)</label>'
-    +'<input type="number" id="v-ore" min="0.5" max="24" step="0.5" placeholder="es. 4" value="'+(p.ore||'')+'"></div>'
-    +'<div class="form-group"><label>&#128202; Stato lavorazione *</label>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div class="form-group"><label>&#9201;&#65039; Ore/operatore</label>'
+    +'<input type="number" id="v-ore" min="0.5" max="24" step="0.5" placeholder="es. 8" value="'+(p.ore||'')+'"></div>'
+    +'<div class="form-group"><label>&#128202; Stato *</label>'
     +'<div class="stato-flags">'
     +'<label class="stato-flag"><input type="radio" name="v-stato-r" value="completata"'+((!p.stato||p.stato==="completata")?" checked":"")+'>'+' &#9989; Completata</label>'
     +'<label class="stato-flag"><input type="radio" name="v-stato-r" value="da-completare"'+(p.stato==="da-completare"?" checked":"")+'>'+' &#128260; Da completare</label>'
     +'<label class="stato-flag"><input type="radio" name="v-stato-r" value="sospesa"'+(p.stato==="sospesa"?" checked":"")+'>'+' &#9888;&#65039; Sospesa</label>'
-    +'</div></div></div></div>'
-    +'<div class="form-group"><label>&#128221; Note e segnalazioni giornaliere</label>'
-    +'<textarea id="v-note" rows="3" placeholder="Segnalazioni, comunicazioni, osservazioni delle aree...">'+(p.note||'')+'</textarea></div>'
+    +'</div></div></div>'
+    +'<div class="form-group"><label>&#128221; Note</label>'
+    +'<textarea id="v-note" rows="3" placeholder="Segnalazioni...">'+(p.note||'')+'</textarea></div>'
+    +'<div class="form-group mt-8"><label>&#128228; Modalit&agrave; salvataggio</label>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:2px solid #ffc107;border-radius:8px;background:#fffde7">'
+    +'<input type="radio" name="v-inv" value="bozza"'+(editMode?'':' checked')+'> &#128221; Bozza</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border:2px solid var(--verde);border-radius:8px;background:#e8f5ec">'
+    +'<input type="radio" name="v-inv" value="inviato"'+(editMode?' checked':'')+'> &#10003; Invia definitivamente</label>'
+    +'</div></div>'
     +'<div class="flex-row mt-8">'
-    +'<button class="btn btn-verde btn-lg" onclick="salvaVerde('+(pf?("'"+pf.id+"'"): 'null')+')">&#128190; Salva Registrazione</button>'
-    +'<button class="btn btn-grigio" onclick="navGo(this)" data-r="home">Annulla</button>'
+    +'<button class="btn btn-verde btn-lg" onclick="salvaVerde('+(pf?"'"+pf.id+"'":'null')+')">&#128190; Salva</button>'
+    +'<button class="btn btn-grigio" onclick="routeTo(\'home\')">Annulla</button>'
     +'</div>'
     +'<div id="v-msg" class="mt-8"></div></div>';
 }
-
 function aggiornaCampiVerde(){
   const checked=[...document.querySelectorAll('#v-lavorazioni input:checked')].map(i=>i.value);
   const v2=document.getElementById('verifica2-row');
@@ -533,22 +581,17 @@ function aggiornaCampiVerde(){
   else{v2.classList.add('hidden');const cb=v2.querySelector('input');if(cb)cb.checked=false;}
   let html='';
   if(checked.includes('lv17'))
-    html+='<div class="sub-field"><label>Esito 1&ordf; Verifica impianto irrigazione:</label>'
-    +'<div class="radio-group"><label><input type="radio" name="v1-esito" value="positiva"> &#9989; Positiva (impianto funzionante)</label>'
-    +'<label><input type="radio" name="v1-esito" value="negativa"> &#10060; Negativa (problemi rilevati)</label></div></div>';
+    html+='<div class="sub-field"><label>Esito 1&ordf; Verifica:</label><div class="radio-group"><label><input type="radio" name="v1-esito" value="positiva"> &#9989; Positiva</label><label><input type="radio" name="v1-esito" value="negativa"> &#10060; Negativa</label></div></div>';
   if(checked.includes('lv17_2'))
-    html+='<div class="sub-field"><label>Esito 2&ordf; Verifica impianto irrigazione:</label>'
-    +'<div class="radio-group"><label><input type="radio" name="v2-esito" value="positiva"> &#9989; Positiva (problema risolto)</label>'
-    +'<label><input type="radio" name="v2-esito" value="negativa"> &#10060; Negativa (problema persistente)</label></div></div>';
+    html+='<div class="sub-field"><label>Esito 2&ordf; Verifica:</label><div class="radio-group"><label><input type="radio" name="v2-esito" value="positiva"> &#9989; Positiva</label><label><input type="radio" name="v2-esito" value="negativa"> &#10060; Negativa</label></div></div>';
   if(checked.includes('lv16'))
-    html+='<div class="sub-field"><label>Note irrigazioni extra canone * (obbligatorie):</label><textarea id="note-lv16" rows="2" placeholder="Descrivere intervento..."></textarea></div>';
+    html+='<div class="sub-field"><label>Note irrigazioni extra canone * (obbligatorie):</label><textarea id="note-lv16" rows="2" placeholder="Descrivere..."></textarea></div>';
   if(checked.includes('lv19'))
-    html+='<div class="sub-field"><label>Note manutenzione impianto - atto vandalico * (obbligatorie):</label><textarea id="note-lv19" rows="2" placeholder="Descrivere danno e intervento..."></textarea></div>';
+    html+='<div class="sub-field"><label>Note manutenzione atto vandalico * (obbligatorie):</label><textarea id="note-lv19" rows="2" placeholder="Descrivere..."></textarea></div>';
   if(checked.includes('lv20'))
-    html+='<div class="sub-field"><label>Note intervento extra canone * (obbligatorie):</label><textarea id="note-lv20" rows="2" placeholder="Descrivere intervento non in canone..."></textarea></div>';
+    html+='<div class="sub-field"><label>Note intervento extra canone * (obbligatorie):</label><textarea id="note-lv20" rows="2" placeholder="Descrivere..."></textarea></div>';
   document.getElementById('v-campi-extra').innerHTML=html;
 }
-
 function salvaVerde(editId){
   const data=document.getElementById('v-data').value;
   const aid=document.getElementById('v-area').value;
@@ -557,15 +600,17 @@ function salvaVerde(editId){
   const ore=parseFloat(document.getElementById('v-ore').value)||0;
   const stato=document.querySelector('input[name="v-stato-r"]:checked');
   const note=document.getElementById('v-note').value.trim();
+  const invSel=document.querySelector('input[name="v-inv"]:checked');
+  const statoInvio=invSel?invSel.value:'bozza';
   const msg=document.getElementById('v-msg');
   if(!data){msg.innerHTML='<div class="alert alert-error">Inserire la data.</div>';return;}
-  if(!aid){msg.innerHTML='<div class="alert alert-error">Selezionare l&#39;area di intervento.</div>';return;}
+  if(!aid){msg.innerHTML='<div class="alert alert-error">Selezionare l&#39;area.</div>';return;}
   if(!operatori.length){msg.innerHTML='<div class="alert alert-error">Selezionare almeno un operatore.</div>';return;}
   if(!lavorazioni.length){msg.innerHTML='<div class="alert alert-error">Selezionare almeno una lavorazione.</div>';return;}
-  if(!stato){msg.innerHTML='<div class="alert alert-error">Indicare lo stato della lavorazione.</div>';return;}
-  if(lavorazioni.includes('lv16')){const n=document.getElementById('note-lv16');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Inserire note per irrigazioni extra canone.</div>';return;}}
-  if(lavorazioni.includes('lv19')){const n=document.getElementById('note-lv19');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Inserire note per manutenzione atto vandalico.</div>';return;}}
-  if(lavorazioni.includes('lv20')){const n=document.getElementById('note-lv20');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Inserire note per intervento extra canone.</div>';return;}}
+  if(!stato){msg.innerHTML='<div class="alert alert-error">Indicare lo stato.</div>';return;}
+  if(lavorazioni.includes('lv16')){const n=document.getElementById('note-lv16');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Note extra canone obbligatorie.</div>';return;}}
+  if(lavorazioni.includes('lv19')){const n=document.getElementById('note-lv19');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Note atto vandalico obbligatorie.</div>';return;}}
+  if(lavorazioni.includes('lv20')){const n=document.getElementById('note-lv20');if(!n||!n.value.trim()){msg.innerHTML='<div class="alert alert-error">Note extra canone obbligatorie.</div>';return;}}
   const noteExtra={};
   if(lavorazioni.includes('lv17')){const r=document.querySelector('input[name="v1-esito"]:checked');noteExtra.verifica1=r?r.value:'';}
   if(lavorazioni.includes('lv17_2')){const r=document.querySelector('input[name="v2-esito"]:checked');noteExtra.verifica2=r?r.value:'';}
@@ -575,52 +620,54 @@ function salvaVerde(editId){
   const nonSoloNoMq=lavorazioni.some(l=>!LAVORAZIONI_NO_MQ_VERDE.includes(l));
   const area=db.areeVerde.find(a=>a.id===aid);
   const superficieMq=nonSoloNoMq?(area?area.superficie:0):0;
-  const rec={data,areaId:aid,operatori,lavorazioni,noteExtra,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq};
+  const rec={data,areaId:aid,operatori,lavorazioni,noteExtra,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq,statoInvio};
   if(editId&&editId!=='null'){
     const idx=db.registrazioniVerde.findIndex(r=>r.id===editId);
-    if(idx>=0)db.registrazioniVerde[idx]={...db.registrazioniVerde[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
-  }else{
+    if(idx>=0) db.registrazioniVerde[idx]={...db.registrazioniVerde[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
+  } else {
     db.registrazioniVerde.push({id:'rv'+Date.now(),creato:new Date().toISOString(),creatoDa:currentUser.id,...rec});
   }
+  if(statoInvio==='inviato') generaNotificheApprovazione('rv'+Date.now());
+  generaNotificheOre(data);
   saveDB();
-  msg.innerHTML='<div class="alert alert-success">&#9989; Registrazione salvata con successo!</div>';
+  const lbl=statoInvio==='inviato'?'Registrazione inviata!':'Bozza salvata!';
+  msg.innerHTML='<div class="alert alert-success">&#9989; '+lbl+'</div>';
   setTimeout(()=>routeTo(currentUser.ruolo==='operatore'?'home':'archivio-verde'),1300);
 }
 
 // ============ ARCHIVIO ============
-function renderArchivio(modulo){window.CURRENT_MOD=modulo;
+function renderArchivio(modulo){
+  window.CURRENT_MOD=modulo;
   const isD=modulo==='diserbo';
   const sett=isD?db.settoriDiserbo:db.settoriVerde;
   const aree=isD?db.areeDiserbo:db.areeVerde;
+  const lav=isD?db.lavorazioniDiserbo:db.lavorazioniVerde;
   const icon=isD?'&#9986;&#65039;':'&#127807;';
-  const tit=isD?'Diserbo Superfici Non Pavimentate':'Verde Pubblico Attrezzato';
-  const LOGO=LOGO_B64;
+  const tit=isD?'Diserbo':'Verde';
   return '<div>'
-    +'<div class="print-header">'
-    +'<img src="data:image/jpeg;base64,'+LOGO+'" alt="SO.MI.CA.">'
-    +'<div class="intestazione">Societ&agrave; Unipersonale soggetta alla direzione e coordinamento del Comune di Carbonia, P. I. e Codice Fiscale 02745530929 &nbsp;REA n. 221044. Capitale Sociale: &euro; 337.750,00 &nbsp;Sede legale: Piazza Roma, 1 &ndash; 09013 Carbonia (SU) &nbsp;Sede operativa: Via Lubiana, 348 &ndash; 09013 Carbonia (SU) &nbsp;Tel.0781 665070 &nbsp;Fax 0781 661667 &nbsp;e-mail somica_spa@somica.it &nbsp;Sito web: www.somica.it</div>'
-    +'<h2 style="margin-top:12px;color:#1a5c2a">'+icon+' Archivio '+tit+'</h2>'
-    +'</div>'
+    +'<div class="print-header"><img src="data:image/jpeg;base64,'+LOGO_B64+'" alt="SO.MI.CA.">'
+    +'<div class="intestazione">SO.MI.CA. S.p.A. &mdash; Via Lubiana, 348 &mdash; Carbonia (SU)</div>'
+    +'<h2 style="margin-top:12px;color:#1a5c2a">'+icon+' Archivio '+tit+'</h2></div>'
     +'<div class="filter-bar no-print">'
-    +'<div class="card-title" style="margin-bottom:10px">&#128269; Filtri di ricerca</div>'
+    +'<div class="card-title" style="margin-bottom:10px">&#128269; Filtri</div>'
     +'<div class="filter-grid">'
     +'<div><label class="text-small">Data da</label><input type="date" id="f-dal" onchange="renderTabella(window.CURRENT_MOD)"></div>'
     +'<div><label class="text-small">Data a</label><input type="date" id="f-al" onchange="renderTabella(window.CURRENT_MOD)"></div>'
-    +(isD?'<div><label class="text-small">Settore</label><select id="f-settore" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutti i settori</option>'+sett.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select></div>':'')
-    +'<div><label class="text-small">Area</label><select id="f-area" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutte le aree</option>'+aree.map(a=>'<option value="'+a.id+'">'+a.nome+'</option>').join('')+'</select></div>'
+    +(isD?'<div><label class="text-small">Settore</label><select id="f-settore" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutti</option>'+sett.map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select></div>':'')
+    +'<div><label class="text-small">Area</label><select id="f-area" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutte</option>'+aree.map(a=>'<option value="'+a.id+'">'+a.nome+'</option>').join('')+'</select></div>'
     +'<div><label class="text-small">Operatore</label><select id="f-op" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutti</option>'+db.utenti.filter(u=>u.ruolo==="operatore").map(u=>'<option value="'+u.id+'">'+u.nome+' '+u.cognome+'</option>').join('')+'</select></div>'
+    +'<div><label class="text-small">Lavorazione</label><select id="f-lav" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutte</option>'+lav.filter(l=>l.attivo).map(l=>'<option value="'+l.id+'">'+l.nome+'</option>').join('')+'</select></div>'
     +'<div><label class="text-small">Stato</label><select id="f-stato" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutti</option><option value="completata">Completata</option><option value="da-completare">Da completare</option><option value="sospesa">Sospesa</option></select></div>'
-    +'<div><label class="text-small">Lavorazione</label><select id="f-lav" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutte le lavorazioni</option>'+(isD?db.lavorazioniDiserbo:db.lavorazioniVerde).filter(l=>l.attivo).map(l=>'<option value="'+l.id+'">'+l.nome+'</option>').join('')+'</select></div>'
+    +'<div><label class="text-small">Invio</label><select id="f-sinvio" onchange="renderTabella(window.CURRENT_MOD)"><option value="">Tutti</option><option value="bozza">Bozza</option><option value="inviato">Inviato</option><option value="approvato">Approvato</option></select></div>'
     +'</div>'
     +'<div class="flex-row mt-8">'
-    +'<button class="btn btn-grigio btn-sm" onclick="resetFiltri(window.CURRENT_MOD)">&#8634; Reset filtri</button>'
-    +'<button class="btn btn-blu btn-sm no-print" onclick="stampaPagina()">&#128424;&#65039; Stampa / PDF</button>'
-    +'<button class="btn btn-verde btn-sm no-print" onclick="esportaCSV(window.CURRENT_MOD)">&#128229; Esporta CSV</button>'
+    +'<button class="btn btn-grigio btn-sm" onclick="resetFiltri(window.CURRENT_MOD)">&#8634; Reset</button>'
+    +'<button class="btn btn-blu btn-sm no-print" onclick="stampaPagina()">&#128424;&#65039; Stampa</button>'
+    +'<button class="btn btn-verde btn-sm no-print" onclick="esportaCSV(window.CURRENT_MOD)">&#128229; CSV</button>'
     +'</div></div>'
-    +'<div id="tabella-'+modulo+'"><p class="text-small text-center">Caricamento...</p></div>'
+    +'<div id="tabella-'+modulo+'"></div>'
     +'</div>';
 }
-
 function filtroArchivio(modulo){
   const regs=modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
   const dal=document.getElementById('f-dal')?.value;
@@ -628,20 +675,22 @@ function filtroArchivio(modulo){
   const sid=document.getElementById('f-settore')?.value;
   const aid=document.getElementById('f-area')?.value;
   const opId=document.getElementById('f-op')?.value;
-  const stato=document.getElementById('f-stato')?.value;
   const lavId=document.getElementById('f-lav')?.value;
-  return regs.filter(r=>{
+  const stato=document.getElementById('f-stato')?.value;
+  const sinvio=document.getElementById('f-sinvio')?.value;
+  return (regs||[]).filter(r=>{
+    if(!r) return false;
     if(dal&&r.data<dal)return false;
     if(al&&r.data>al)return false;
     if(sid&&r.settoreId!==sid)return false;
     if(aid&&r.areaId!==aid)return false;
-    if(opId&&!r.operatori.includes(opId))return false;
+    if(opId&&(!r.operatori||!r.operatori.includes(opId)))return false;
+    if(lavId&&(!r.lavorazioni||!r.lavorazioni.includes(lavId)))return false;
     if(stato&&r.stato!==stato)return false;
-    if(lavId&&!r.lavorazioni.includes(lavId))return false;
+    if(sinvio&&(r.statoInvio||'inviato')!==sinvio)return false;
     return true;
   }).sort((a,b)=>b.data.localeCompare(a.data));
 }
-
 function renderTabella(modulo){
   const isAdmin=currentUser.ruolo==='admin';
   const isD=modulo==='diserbo';
@@ -653,69 +702,77 @@ function renderTabella(modulo){
   const totMq=rows.reduce((s,r)=>s+(r.superficieMq||0),0);
   const sClass={completata:'badge-verde','da-completare':'badge-giallo',sospesa:'badge-rosso'};
   const sLabel={completata:'&#9989; Completata','da-completare':'&#128260; Da completare',sospesa:'&#9888;&#65039; Sospesa'};
+  const invClass={bozza:'badge-bozza',inviato:'badge-inviato',approvato:'badge-approvato'};
+  const invLabel={bozza:'&#128221; Bozza',inviato:'&#128228; Inviato',approvato:'&#9989; Approvato'};
   let html='<div class="stats-grid" style="margin-bottom:14px">'
-    +'<div class="stat-card"><div class="num">'+rows.length+'</div><div class="lbl">N&deg; Interventi Eseguiti</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+totOre.toFixed(1)+'</div><div class="lbl">Ore Uomo Totali</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+totMq.toLocaleString("it-IT")+'</div><div class="lbl">m&sup2; Superfici Manutenute</div></div>'
+    +'<div class="stat-card"><div class="num">'+rows.length+'</div><div class="lbl">Interventi</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+totOre.toFixed(1)+'</div><div class="lbl">Ore Uomo</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+totMq.toLocaleString('it-IT')+'</div><div class="lbl">m&sup2;</div></div>'
     +'</div>';
-  if(!rows.length){html+='<div class="card"><p class="text-center text-small">Nessuna registrazione trovata con i filtri selezionati.</p></div>';}
+  if(!rows.length){html+='<div class="card"><p class="text-center text-small">Nessuna registrazione trovata.</p></div>';}
   else{
     html+='<div class="card" style="overflow-x:auto"><table class="data-table"><thead><tr>'
-    +'<th>Data</th>'+(isD?'<th>Settore</th>':'')+'<th>Area</th><th>Operatori</th><th>Lavorazioni</th><th>Ore/Op</th><th>Ore Tot.</th><th>m&sup2;</th><th>Stato</th><th>Note</th>'
+    +'<th>Data</th>'+(isD?'<th>Settore</th>':'')+'<th>Area</th><th>Operatori</th><th>Lavorazioni</th><th>Ore/Op</th><th>Ore Tot.</th><th>m&sup2;</th><th>Stato</th><th>Invio</th><th>Note</th>'
     +(isAdmin?'<th class="no-print">Azioni</th>':'')
     +'</tr></thead><tbody>'
     +rows.map(r=>{
       const a=aree.find(x=>x.id===r.areaId);
       const s=sett.find(x=>x.id===r.settoreId);
-      const ops=r.operatori.map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(', ');
-      const lavNomi=r.lavorazioni.map(lid=>{if(lid==='lv17_2')return '2ª Verifica irrig.';const l=lav.find(x=>x.id===lid);return l?l.nome:lid;}).join('; ');
-      return '<tr><td><strong>'+r.data+'</strong></td>'
+      const ops=(r.operatori||[]).map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(', ');
+      const lavNomi=(r.lavorazioni||[]).map(lid=>{if(lid==='lv17_2')return '2ª Verifica irrig.';const l=lav.find(x=>x.id===lid);return l?l.nome:lid;}).join('; ');
+      const sinvio=r.statoInvio||'inviato';
+      const rowCls=sinvio==='bozza'?' class="bozza-row"':'';
+      return '<tr'+rowCls+'>'
+        +'<td><strong>'+r.data+'</strong></td>'
         +(isD?'<td>'+(s?s.nome:'-')+'</td>':'')
-        +'<td>'+(a?a.nome:'-')+(a?' <span class="text-small">('+a.superficie+'mq)</span>':'')+'</td>'
+        +'<td>'+(a?a.nome:'-')+'</td>'
         +'<td style="font-size:.8rem">'+ops+'</td>'
-        +'<td style="max-width:200px;font-size:.78rem">'+lavNomi+'</td>'
+        +'<td style="max-width:180px;font-size:.78rem">'+lavNomi+'</td>'
         +'<td>'+(r.ore||'-')+'</td>'
         +'<td><strong>'+(r.oreTotali||0).toFixed(1)+'</strong></td>'
-        +'<td>'+(r.superficieMq?(r.superficieMq).toLocaleString("it-IT"):'-')+'</td>'
-        +'<td><span class="badge '+(sClass[r.stato]||'')+'">'+( sLabel[r.stato]||r.stato)+'</span></td>'
-        +'<td style="max-width:150px;font-size:.78rem">'+(r.note||'')+'</td>'
-        +(isAdmin?'<td class="no-print"><div style="display:flex;gap:4px"><button class="btn btn-grigio btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998;</button><button class="btn btn-rosso btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="eliminaReg(this.dataset.mod,this.dataset.id)">&#128465;</button></div></td>':'')
+        +'<td>'+(r.superficieMq?r.superficieMq.toLocaleString('it-IT'):'-')+'</td>'
+        +'<td><span class="badge '+(sClass[r.stato]||'')+'">'+(sLabel[r.stato]||r.stato)+'</span></td>'
+        +'<td><span class="'+(invClass[sinvio]||'badge-inviato')+'">'+(invLabel[sinvio]||sinvio)+'</span></td>'
+        +'<td style="max-width:120px;font-size:.78rem">'+(r.note||'')+'</td>'
+        +(isAdmin?'<td class="no-print"><div style="display:flex;gap:4px">'
+          +'<button class="btn btn-grigio btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998;</button>'
+          +(sinvio==='inviato'?'<button class="btn btn-verde btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="adminApprovaRegistrazione(this.dataset.mod,this.dataset.id)">&#9989;</button>':'')
+          +(sinvio==='bozza'?'<button class="btn btn-arancio btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="adminInviaBozzaOperatore(this.dataset.mod,this.dataset.id)">&#128228;</button>':'')
+          +'<button class="btn btn-rosso btn-sm" data-mod="'+modulo+'" data-id="'+r.id+'" onclick="eliminaReg(this.dataset.mod,this.dataset.id)">&#128465;</button>'
+          +'</div></td>':'')
         +'</tr>';
     }).join('')
     +'</tbody></table></div>';
   }
   document.getElementById('tabella-'+modulo).innerHTML=html;
 }
-
-function resetFiltri(m){['f-dal','f-al','f-settore','f-area','f-op','f-stato','f-lav'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});renderTabella(m);}
+function resetFiltri(m){['f-dal','f-al','f-settore','f-area','f-op','f-lav','f-stato','f-sinvio'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});renderTabella(m);}
 function stampaPagina(){window.print();}
-
 function esportaCSV(modulo){
   const rows=filtroArchivio(modulo);
   const isD=modulo==='diserbo';
   const aree=isD?db.areeDiserbo:db.areeVerde;
   const sett=isD?db.settoriDiserbo:db.settoriVerde;
   const lav=isD?db.lavorazioniDiserbo:db.lavorazioniVerde;
-  const hdr=isD?['Data','Settore','Area','Superficie mq','Operatori','Lavorazioni','Ore/Op','Ore Totali','Stato','Note']
-    :['Data','Area','Settore','Superficie mq','Operatori','Lavorazioni','Ore/Op','Ore Totali','mq Conteggiati','Stato','Note'];
+  const hdr=isD?['Data','Settore','Area','Superficie mq','Operatori','Lavorazioni','Ore/Op','Ore Totali','Stato','Invio','Note']
+    :['Data','Area','Settore','Superficie mq','Operatori','Lavorazioni','Ore/Op','Ore Totali','mq Conteggiati','Stato','Invio','Note'];
   const csv=[hdr.join(';')].concat(rows.map(r=>{
     const a=aree.find(x=>x.id===r.areaId);
     const s=sett.find(x=>x.id===r.settoreId);
-    const ops=r.operatori.map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(' / ');
-    const lavNomi=r.lavorazioni.map(lid=>{if(lid==='lv17_2')return '2a Verifica irrigazione';const l=lav.find(x=>x.id===lid);return l?l.nome:lid;}).join(' / ');
+    const ops=(r.operatori||[]).map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(' / ');
+    const lavNomi=(r.lavorazioni||[]).map(lid=>{if(lid==='lv17_2')return '2a Verifica irrig.';const l=lav.find(x=>x.id===lid);return l?l.nome:lid;}).join(' / ');
     const row=[r.data,isD?(s?s.nome:''):(s?s.nome:''),a?a.nome:'',a?a.superficie:'',ops,lavNomi,r.ore||'0',(r.oreTotali||0).toFixed(1)];
     if(!isD)row.push(r.superficieMq||0);
-    row.push(r.stato,r.note||'');
+    row.push(r.stato,r.statoInvio||'inviato',r.note||'');
     return row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';');
   })).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='somica_'+modulo+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  a.download='somica_'+modulo+'_'+oggi()+'.csv';a.click();
 }
-
 function modificaReg(modulo,id){
   const r=modulo==='diserbo'?db.registrazioniDiserbo.find(x=>x.id===id):db.registrazioniVerde.find(x=>x.id===id);
-  if(!r)return;
+  if(!r) return;
   const c=document.getElementById('main-content');
   if(modulo==='diserbo'){
     c.innerHTML=renderFormDiserbo(r);
@@ -723,17 +780,221 @@ function modificaReg(modulo,id){
       const sel=document.getElementById('d-settore');
       if(sel){sel.value=r.settoreId;aggiornaAreaDiserbo(r.areaId);setTimeout(()=>{const as=document.getElementById('d-area');if(as)as.value=r.areaId;},60);}
     },80);
-  }else{
+  } else {
     c.innerHTML=renderFormVerde(r);
     setTimeout(()=>{r.lavorazioni.forEach(lid=>{const cb=document.querySelector('#v-lavorazioni input[value="'+lid+'"]');if(cb)cb.checked=true;});aggiornaCampiVerde();},80);
   }
 }
-
 function eliminaReg(modulo,id){
   if(!confirm('Eliminare questa registrazione?'))return;
-  if(modulo==='diserbo')db.registrazioniDiserbo=db.registrazioniDiserbo.filter(r=>r.id!==id);
+  if(modulo==='diserbo') db.registrazioniDiserbo=db.registrazioniDiserbo.filter(r=>r.id!==id);
   else db.registrazioniVerde=db.registrazioniVerde.filter(r=>r.id!==id);
+  db.notifiche=(db.notifiche||[]).filter(n=>n.regId!==id);
   saveDB();renderTabella(modulo);
+}
+
+// ============ INVIO E APPROVAZIONE ============
+function inviaDefinitivoSingolo(modulo,id){
+  const arr=modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+  const r=arr.find(x=>x.id===id);
+  if(!r)return;
+  r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;
+  saveDB();generaNotificheApprovazione(id);refreshCurrentView();
+  showBanner('&#10003; Registrazione inviata!','success');
+}
+function inviaDefinitvioTutte(){
+  const o=oggi();
+  let count=0;
+  [...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
+    .filter(r=>r.data===o&&r.operatori&&r.operatori.includes(currentUser.id)&&r.statoInvio==='bozza')
+    .forEach(r=>{r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;generaNotificheApprovazione(r.id);count++;});
+  saveDB();refreshCurrentView();
+  showBanner('&#10003; '+count+' registrazioni inviate!','success');
+}
+function adminInviaBozzaOperatore(modulo,id){
+  const arr=modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+  const r=arr.find(x=>x.id===id);
+  if(!r)return;
+  r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;r.inviatoPerConto=true;
+  saveDB();generaNotificheApprovazione(id);routeTo('notifiche');
+  showBanner('&#10003; Bozza inviata per conto dell\'operatore','success');
+}
+function adminApprovaRegistrazione(modulo,id){
+  const arr=modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+  const r=arr.find(x=>x.id===id);
+  if(!r)return;
+  r.statoInvio='approvato';r.approvatoIl=new Date().toISOString();
+  db.notifiche=(db.notifiche||[]).filter(n=>n.regId!==id);
+  saveDB();routeTo('notifiche');
+  showBanner('&#9989; Registrazione approvata!','success');
+}
+function adminApprovaAssenza(notifId){
+  const n=(db.notifiche||[]).find(x=>x.id===notifId);
+  if(!n)return;
+  n.stato='assenza_approvata';n.letto=true;
+  saveDB();routeTo('notifiche');
+  showBanner('&#9989; Assenza approvata per '+n.opNome,'success');
+}
+
+// ============ NOTIFICHE ============
+function generaNotificheApprovazione(regId){
+  if(!db.notifiche) db.notifiche=[];
+  db.notifiche=db.notifiche.filter(n=>n.regId!==regId);
+  const isD=regId.startsWith('rd');
+  const r=(isD?db.registrazioniDiserbo:db.registrazioniVerde).find(x=>x.id===regId);
+  if(!r)return;
+  db.notifiche.push({id:'notif_'+Date.now(),tipo:'approvazione',regId,modulo:isD?'diserbo':'verde',data:r.data,operatori:r.operatori,creato:new Date().toISOString(),letto:false});
+}
+function generaNotificheOre(data){
+  if(!data||!isGiornoLavorativo(data)) return;
+  if(!db.notifiche) db.notifiche=[];
+  const operatoriAttivi=db.utenti.filter(u=>u.attivo&&u.ruolo==='operatore');
+  operatoriAttivi.forEach(op=>{
+    // Calcola ore dalle registrazioni definitive (non bozze)
+    // Un operatore contribuisce con le sue ore in una registrazione solo se compare nella lista operatori
+    const regs=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
+      .filter(r=>r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza');
+    // Somma le ore specifiche per questo operatore (campo ore = ore per singolo operatore)
+    const oreTot=regs.reduce((s,r)=>s+(r.ore||0),0);
+    db.notifiche=db.notifiche.filter(n=>!(n.tipo==='ore'&&n.opId===op.id&&n.data===data));
+    if(oreTot<8&&oreTot>0){
+      db.notifiche.push({id:'ore_'+op.id+'_'+data,tipo:'ore',opId:op.id,opNome:op.nome+' '+op.cognome,data,oreTot,stato:'da_verificare',creato:new Date().toISOString(),letto:false});
+    }
+  });
+}
+function aggiornaBadgeNotifiche(){
+  if(!currentUser||currentUser.ruolo!=='admin') return;
+  const pendenti=(db.notifiche||[]).filter(n=>!n.letto).length;
+  const tab=document.querySelector('.nav-tab[data-route="notifiche"]');
+  if(!tab) return;
+  const existing=tab.querySelector('.notif-badge');
+  if(existing) existing.remove();
+  if(pendenti>0){const badge=document.createElement('span');badge.className='notif-badge';badge.textContent=pendenti>9?'9+':pendenti;tab.appendChild(badge);}
+}
+
+// ============ LE MIE REGISTRAZIONI ============
+function renderMieRegistrazioni(){
+  const uid=currentUser.id;
+  const mie=[...(db.registrazioniDiserbo||[]).map(r=>({...r,_mod:'diserbo'})),...(db.registrazioniVerde||[]).map(r=>({...r,_mod:'verde'}))]
+    .filter(r=>r.operatori&&r.operatori.includes(uid))
+    .sort((a,b)=>b.data.localeCompare(a.data)).slice(0,60);
+  const sClass={bozza:'badge-bozza',inviato:'badge-inviato',approvato:'badge-approvato'};
+  const sLabel={bozza:'&#128221; Bozza',inviato:'&#128228; Inviato',approvato:'&#9989; Approvato'};
+  if(!mie.length) return '<div class="card"><p class="text-center text-small" style="padding:20px">Nessuna registrazione trovata.</p></div>';
+  let html='<div class="card"><div class="card-title">&#128203; Le mie registrazioni</div>'
+    +'<div style="overflow-x:auto"><table class="data-table">'
+    +'<thead><tr><th>Data</th><th>Tipo</th><th>Area</th><th>Ore</th><th>Stato</th><th>Invio</th><th>Azioni</th></tr></thead><tbody>';
+  mie.forEach(function(r){
+    const isD=r._mod==='diserbo';
+    const aree=isD?db.areeDiserbo:db.areeVerde;
+    const a=aree.find(x=>x.id===r.areaId);
+    const bloccata=isBozzaBloccata(r);
+    const sinvio=r.statoInvio||'inviato';
+    const rowCls=sinvio==='bozza'?' class="bozza-row"':'';
+    html+='<tr'+rowCls+'>'
+      +'<td><strong>'+r.data+'</strong></td>'
+      +'<td>'+(isD?'&#9986;&#65039;':'&#127807;')+'</td>'
+      +'<td>'+(a?a.nome:'-')+'</td>'
+      +'<td>'+(r.ore||'-')+'h</td>'
+      +'<td><span class="badge '+(r.stato==='completata'?'badge-verde':r.stato==='sospesa'?'badge-rosso':'badge-giallo')+'">'+r.stato+'</span></td>'
+      +'<td><span class="'+(sClass[sinvio]||'badge-inviato')+'">'+(sLabel[sinvio]||sinvio)+'</span></td>'
+      +'<td>';
+    if(sinvio==='bozza'&&!bloccata){
+      html+='<div style="display:flex;gap:4px">'
+        +'<button class="btn btn-grigio btn-sm" data-mod="'+r._mod+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998;</button>'
+        +'<button class="btn btn-verde btn-sm" data-mod="'+r._mod+'" data-id="'+r.id+'" onclick="inviaDefinitivoSingolo(this.dataset.mod,this.dataset.id)">&#10003; Invia</button>'
+        +'</div>';
+    } else if(sinvio==='bozza'&&bloccata){
+      html+='<span class="badge-bloccata">Bloccata</span>';
+    } else {
+      html+='<span style="color:#888;font-size:.75rem">—</span>';
+    }
+    html+='</td></tr>';
+  });
+  html+='</tbody></table></div></div>';
+  return html;
+}
+
+// ============ NOTIFICHE ADMIN ============
+function renderNotifiche(){
+  if(currentUser.ruolo!=='admin') return '<div class="card"><p>Accesso non autorizzato.</p></div>';
+  const notifiche=(db.notifiche||[]).sort((a,b)=>b.creato.localeCompare(a.creato));
+  const bozzeBloccate=[...(db.registrazioniDiserbo||[]).map(r=>({...r,_mod:'diserbo'})),...(db.registrazioniVerde||[]).map(r=>({...r,_mod:'verde'}))]
+    .filter(r=>r.statoInvio==='bozza'&&r.data<oggi()).sort((a,b)=>b.data.localeCompare(a.data));
+  const daApprovare=notifiche.filter(n=>{
+    if(n.tipo!=='approvazione') return false;
+    const arr=n.modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+    const r=arr.find(x=>x.id===n.regId);
+    return r&&r.statoInvio==='inviato';
+  });
+  const oreProblemi=notifiche.filter(n=>n.tipo==='ore'&&n.stato==='da_verificare');
+  const totPendenti=bozzeBloccate.length+daApprovare.length+oreProblemi.length;
+  // Marca come letto
+  notifiche.forEach(n=>{n.letto=true;});
+  saveDB();
+  setTimeout(()=>aggiornaBadgeNotifiche(),200);
+  let html='<div>';
+  html+='<div class="stats-grid" style="margin-bottom:16px">'
+    +'<div class="stat-card" style="border-top-color:var(--rosso)"><div class="num" style="color:var(--rosso)">'+totPendenti+'</div><div class="lbl">Azioni in attesa</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+bozzeBloccate.length+'</div><div class="lbl">Bozze da inviare</div></div>'
+    +'<div class="stat-card"><div class="num">'+daApprovare.length+'</div><div class="lbl">Da approvare</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+oreProblemi.length+'</div><div class="lbl">Ore da verificare</div></div>'
+    +'</div>';
+  if(bozzeBloccate.length){
+    html+='<div class="card"><div class="card-title" style="color:var(--arancio)">&#128221; Bozze non inviate da operatori</div>';
+    bozzeBloccate.forEach(function(r){
+      const isD=r._mod==='diserbo';
+      const aree=isD?db.areeDiserbo:db.areeVerde;
+      const a=aree.find(x=>x.id===r.areaId);
+      const ops=(r.operatori||[]).map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(', ');
+      html+='<div class="notif-card urgente">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div><strong>'+r.data+'</strong> &mdash; '+(isD?'&#9986;&#65039;':'&#127807;')+' '+(a?a.nome:'Area')
+        +'<br><span class="text-small">Operatori: '+ops+'</span></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button class="btn btn-grigio btn-sm" data-mod="'+r._mod+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998; Modifica</button>'
+        +'<button class="btn btn-verde btn-sm" data-mod="'+r._mod+'" data-id="'+r.id+'" onclick="adminInviaBozzaOperatore(this.dataset.mod,this.dataset.id)">&#128228; Invia per lui</button>'
+        +'</div></div></div>';
+    });
+    html+='</div>';
+  }
+  if(daApprovare.length){
+    html+='<div class="card"><div class="card-title">&#128228; In attesa di approvazione</div>';
+    daApprovare.forEach(function(n){
+      const arr=n.modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+      const r=arr.find(x=>x.id===n.regId);
+      if(!r)return;
+      const aree=n.modulo==='diserbo'?db.areeDiserbo:db.areeVerde;
+      const a=aree.find(x=>x.id===r.areaId);
+      const ops=(r.operatori||[]).map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(', ');
+      html+='<div class="notif-card">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div><strong>'+r.data+'</strong> &mdash; '+(n.modulo==='diserbo'?'&#9986;&#65039;':'&#127807;')+' '+(a?a.nome:'Area')
+        +(r.inviatoPerConto?' <span class="text-small" style="color:var(--arancio)">(inviato dall\'admin)</span>':'')
+        +'<br><span class="text-small">Operatori: '+ops+' &mdash; Ore: '+(r.ore||'-')+'h &mdash; Stato: '+r.stato+'</span></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button class="btn btn-grigio btn-sm" data-mod="'+n.modulo+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998; Modifica</button>'
+        +'<button class="btn btn-verde btn-sm" data-mod="'+n.modulo+'" data-id="'+r.id+'" onclick="adminApprovaRegistrazione(this.dataset.mod,this.dataset.id)">&#9989; Approva</button>'
+        +'</div></div></div>';
+    });
+    html+='</div>';
+  }
+  if(oreProblemi.length){
+    html+='<div class="card"><div class="card-title" style="color:var(--giallo)">&#9201;&#65039; Ore insufficienti</div>';
+    oreProblemi.forEach(function(n){
+      html+='<div class="notif-card">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div><strong>'+n.opNome+'</strong> &mdash; '+n.data
+        +'<br><span class="text-small">Ore registrate: <strong style="color:var(--rosso)">'+n.oreTot+'h</strong> su 8h previste</span></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button class="btn btn-verde btn-sm" data-notif="'+n.id+'" onclick="adminApprovaAssenza(this.dataset.notif)">&#9989; Approva assenza</button>'
+        +'</div></div></div>';
+    });
+    html+='</div>';
+  }
+  if(!totPendenti) html+='<div class="card"><div class="ore-ok" style="margin:0">&#9989; Nessuna azione in attesa. Tutto in ordine!</div></div>';
+  html+='</div>';
+  return html;
 }
 
 // ============ STATISTICHE ============
@@ -741,241 +1002,112 @@ function renderStatistiche(){
   const d=db.registrazioniDiserbo||[], v=db.registrazioniVerde||[];
   const lD=db.lavorazioniDiserbo||[], lV=db.lavorazioniVerde||[];
   const aD=db.areeDiserbo||[], aV=db.areeVerde||[];
-
-  // ---- Helper: mesi ultimi 6 ----
-  function byMese(regs){
-    const m={};
-    regs.forEach(r=>{if(r&&r.data){const k=r.data.slice(0,7);m[k]=(m[k]||0)+1;}});
-    return Object.entries(m).sort().slice(-6);
-  }
-  // ---- Helper: per area (top 5) ----
-  function byAreaTop(regs,aree){
-    const m={};
-    regs.forEach(r=>{if(!r||!r.areaId)return;const a=aree.find(x=>x.id===r.areaId);const k=a?a.nome:'N/D';m[k]=(m[k]||0)+1;});
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  }
-  // ---- Helper: per lavorazione (top 6) ----
-  function byLav(regs,lavs){
-    const m={};
-    regs.forEach(r=>{if(!r||!r.lavorazioni)return;r.lavorazioni.forEach(lid=>{const l=lavs.find(x=>x.id===lid);const k=l?l.nome.slice(0,30):'N/D';m[k]=(m[k]||0)+1;});});
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  }
-  // ---- Helper: per mese ore ----
-  function oreByMese(regs){
-    const m={};
-    regs.forEach(r=>{if(!r||!r.data)return;const k=r.data.slice(0,7);m[k]=(m[k]||0)+(r.oreTotali||0);});
-    return Object.entries(m).sort().slice(-6);
-  }
-  // ---- Helper: stato distribuzione ----
-  function byStato(regs){
-    const m={completata:0,'da-completare':0,sospesa:0};
-    regs.forEach(r=>{if(r&&r.stato&&m[r.stato]!==undefined)m[r.stato]++;});
-    return m;
-  }
-
-  // Totali
-  const totD=d.length, totV=v.length;
+  function byMese(regs){const m={};regs.forEach(r=>{if(r&&r.data){const k=r.data.slice(0,7);m[k]=(m[k]||0)+1;}});return Object.entries(m).sort().slice(-6);}
+  function byAreaTop(regs,aree){const m={};regs.forEach(r=>{if(!r||!r.areaId)return;const a=aree.find(x=>x.id===r.areaId);const k=a?a.nome:'N/D';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);}
+  function byLav(regs,lavs){const m={};regs.forEach(r=>{if(!r||!r.lavorazioni)return;r.lavorazioni.forEach(lid=>{const l=lavs.find(x=>x.id===lid);const k=l?l.nome.slice(0,28):'N/D';m[k]=(m[k]||0)+1;});});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);}
+  function oreByMese(regs){const m={};regs.forEach(r=>{if(!r||!r.data)return;const k=r.data.slice(0,7);m[k]=(m[k]||0)+(r.oreTotali||0);});return Object.entries(m).sort().slice(-6);}
+  function byStato(regs){const m={completata:0,'da-completare':0,sospesa:0};regs.forEach(r=>{if(r&&r.stato&&m[r.stato]!==undefined)m[r.stato]++;});return m;}
+  const totD=d.length,totV=v.length;
   const oreD=d.reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
   const oreV=v.reduce((s,r)=>s+(r&&r.oreTotali?r.oreTotali:0),0);
   const mqD=d.reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
   const mqV=v.reduce((s,r)=>s+(r&&r.superficieMq?r.superficieMq:0),0);
-
-  // Dati grafici
-  const mesiD=byMese(d), mesiV=byMese(v);
-  const areeD=byAreaTop(d,aD), areeV=byAreaTop(v,aV);
-  const lavD=byLav(d,lD), lavV=byLav(v,lV);
-  const oreD6=oreByMese(d), oreV6=oreByMese(v);
-  const statoD=byStato(d), statoV=byStato(v);
-
-  // ---- SVG Bar chart orizzontale ----
-  function barChart(items, color, unit){
-    if(!items.length) return '<p class="text-small" style="padding:8px">Nessun dato disponibile</p>';
+  const mD=byMese(d),mV=byMese(v);
+  const areeD=byAreaTop(d,aD),areeV=byAreaTop(v,aV);
+  const lavD=byLav(d,lD),lavV=byLav(v,lV);
+  const oreD6=oreByMese(d),oreV6=oreByMese(v);
+  const statoD=byStato(d),statoV=byStato(v);
+  function barChart(items,color,unit){
+    if(!items.length) return '<p class="text-small" style="padding:8px">Nessun dato</p>';
     const max=Math.max(...items.map(x=>x[1]),1);
-    return items.map(([lbl,val])=>{
-      const pct=Math.round((val/max)*100);
-      const short=lbl.length>28?lbl.slice(0,26)+'…':lbl;
-      return '<div style="margin-bottom:7px">'
-        +'<div style="display:flex;justify-content:space-between;margin-bottom:2px">'
-        +'<span style="font-size:.78rem;color:#444">'+short+'</span>'
-        +'<span style="font-size:.78rem;font-weight:700;color:'+color+'">'+val+(unit?' '+unit:'')+'</span>'
-        +'</div>'
-        +'<div style="height:16px;background:#f0f0f0;border-radius:8px;overflow:hidden">'
-        +'<div style="height:100%;background:'+color+';width:'+pct+'%;border-radius:8px;transition:width .5s"></div>'
-        +'</div></div>';
-    }).join('');
+    return items.map(([lbl,val])=>{const pct=Math.round((val/max)*100);const short=lbl.length>28?lbl.slice(0,26)+'\u2026':lbl;return '<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:.78rem;color:#444">'+short+'</span><span style="font-size:.78rem;font-weight:700;color:'+color+'">'+val+(unit?' '+unit:'')+'</span></div><div style="height:16px;background:#f0f0f0;border-radius:8px;overflow:hidden"><div style="height:100%;background:'+color+';width:'+pct+'%;border-radius:8px"></div></div></div>';}).join('');
   }
-
-  // ---- Donut SVG per stati ----
-  function donutChart(stato, colorMap){
+  function donutChart(stato,colorMap){
     const tot=stato.completata+stato['da-completare']+stato.sospesa;
     if(tot===0) return '<p class="text-small" style="padding:8px;text-align:center">Nessun dato</p>';
-    const pct=k=>Math.round((stato[k]/tot)*100);
-    const items=[
-      {k:'completata',label:'Completati',color:colorMap[0],val:stato.completata},
-      {k:'da-completare',label:'Da completare',color:colorMap[1],val:stato['da-completare']},
-      {k:'sospesa',label:'Sospesi',color:colorMap[2],val:stato.sospesa}
-    ];
-    // Simple donut with CSS
-    const r=50,cx=60,cy=60,stroke=22;
-    const circ=2*Math.PI*r;
-    let offset=0;
-    let arcs='';
-    items.forEach(it=>{
-      const dash=(it.val/tot)*circ;
-      arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+it.color+'" stroke-width="'+stroke+'" stroke-dasharray="'+dash.toFixed(1)+' '+circ.toFixed(1)+'" stroke-dashoffset="-'+offset.toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')" />';
-      offset+=dash;
-    });
-    const legend=items.map(it=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:.78rem"><div style="width:10px;height:10px;border-radius:50%;background:'+it.color+'"></div>'+it.label+': <strong>'+it.val+'</strong> ('+pct(it.k)+'%)</div>').join('');
-    return '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center">'
-      +'<svg width="120" height="120" viewBox="0 0 120 120">'+arcs
-      +'<text x="60" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">'+tot+'</text>'
-      +'<text x="60" y="72" text-anchor="middle" font-size="9" fill="#888">interventi</text>'
-      +'</svg>'
-      +'<div>'+legend+'</div></div>';
+    const items=[{k:'completata',label:'Completati',color:colorMap[0],val:stato.completata},{k:'da-completare',label:'Da completare',color:colorMap[1],val:stato['da-completare']},{k:'sospesa',label:'Sospesi',color:colorMap[2],val:stato.sospesa}];
+    const r=50,cx=60,cy=60,stroke=22,circ=2*Math.PI*r;
+    let offset=0;let arcs='';
+    items.forEach(it=>{const dash=(it.val/tot)*circ;arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+it.color+'" stroke-width="'+stroke+'" stroke-dasharray="'+dash.toFixed(1)+' '+circ.toFixed(1)+'" stroke-dashoffset="-'+offset.toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')" />';offset+=dash;});
+    const legend=items.map(it=>'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:.78rem"><div style="width:10px;height:10px;border-radius:50%;background:'+it.color+'"></div>'+it.label+': <strong>'+it.val+'</strong> ('+Math.round((it.val/tot)*100)+'%)</div>').join('');
+    return '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center"><svg width="120" height="120" viewBox="0 0 120 120">'+arcs+'<text x="60" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">'+tot+'</text><text x="60" y="72" text-anchor="middle" font-size="9" fill="#888">interventi</text></svg><div>'+legend+'</div></div>';
   }
-
-  // ---- Trend mensile dual bar ----
   function trendDual(mD,mV){
     const allMesi=[...new Set([...mD.map(x=>x[0]),...mV.map(x=>x[0])])].sort().slice(-6);
     if(!allMesi.length) return '<p class="text-small" style="padding:8px">Nessun dato</p>';
-    const mapD=Object.fromEntries(mD), mapV=Object.fromEntries(mV);
+    const mapD=Object.fromEntries(mD),mapV=Object.fromEntries(mV);
     const maxVal=Math.max(...allMesi.map(m=>(mapD[m]||0)+(mapV[m]||0)),1);
-    return allMesi.map(m=>{
-      const vd=mapD[m]||0, vv=mapV[m]||0;
-      const pw=d=>Math.round((d/maxVal)*100);
-      const mLabel=m.slice(5)+'/'+m.slice(0,4);
-      return '<div style="margin-bottom:8px">'
-        +'<div style="font-size:.75rem;color:#666;margin-bottom:2px">'+mLabel+'</div>'
-        +'<div style="display:flex;gap:3px;height:18px">'
-        +'<div style="background:var(--arancio);width:'+pw(vd)+'%;border-radius:4px 0 0 4px;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+( vd||'')+'</span></div>'
-        +'<div style="background:var(--verde);width:'+pw(vv)+'%;border-radius:0 4px 4px 0;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+( vv||'')+'</span></div>'
-        +'</div></div>';
-    }).join('');
+    return allMesi.map(m=>{const vd=mapD[m]||0,vv=mapV[m]||0;const pw=d=>Math.round((d/maxVal)*100);const mLabel=m.slice(5)+'/'+m.slice(0,4);return '<div style="margin-bottom:8px"><div style="font-size:.75rem;color:#666;margin-bottom:2px">'+mLabel+'</div><div style="display:flex;gap:3px;height:18px"><div style="background:var(--arancio);width:'+pw(vd)+'%;border-radius:4px 0 0 4px;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+(vd||'')+'</span></div><div style="background:var(--verde);width:'+pw(vv)+'%;border-radius:0 4px 4px 0;display:flex;align-items:center;padding-left:4px"><span style="color:#fff;font-size:.7rem;font-weight:700">'+(vv||'')+'</span></div></div></div>';}).join('');
   }
-
-  const noData = (totD+totV)===0;
-  const noDataMsg = '<div class="card" style="text-align:center;padding:30px"><div style="font-size:2.5rem;margin-bottom:12px">📊</div><p style="color:var(--grigio-mid)">Le statistiche si popolano automaticamente<br>man mano che vengono inserite le registrazioni.</p></div>';
-
+  const noData=(totD+totV)===0;
+  const noDataMsg='<div class="card" style="text-align:center;padding:30px"><div style="font-size:2.5rem;margin-bottom:12px">&#128202;</div><p style="color:var(--grigio-mid)">Le statistiche si popolano automaticamente con le registrazioni.</p></div>';
   return '<div>'
-    // KPI TOP
     +'<div class="stats-grid" style="margin-bottom:16px">'
-    +'<div class="stat-card"><div class="num">'+(totD+totV)+'</div><div class="lbl">N° Interventi Totali</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+totD+'</div><div class="lbl">Interventi Diserbo</div></div>'
-    +'<div class="stat-card"><div class="num">'+totV+'</div><div class="lbl">Interventi Verde</div></div>'
+    +'<div class="stat-card"><div class="num">'+(totD+totV)+'</div><div class="lbl">Interventi Totali</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--arancio)"><div class="num" style="color:var(--arancio)">'+totD+'</div><div class="lbl">Diserbo</div></div>'
+    +'<div class="stat-card"><div class="num">'+totV+'</div><div class="lbl">Verde</div></div>'
     +'<div class="stat-card" style="border-top-color:var(--blu)"><div class="num" style="color:var(--blu)">'+(oreD+oreV).toFixed(1)+'</div><div class="lbl">Ore Uomo Totali</div></div>'
-    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(mqD+mqV).toLocaleString('it-IT')+'</div><div class="lbl">m² Manutenuti</div></div>'
+    +'<div class="stat-card" style="border-top-color:var(--giallo)"><div class="num" style="color:var(--giallo)">'+(mqD+mqV).toLocaleString('it-IT')+'</div><div class="lbl">m&sup2; Manutenuti</div></div>'
     +'<div class="stat-card" style="border-top-color:#8e44ad"><div class="num" style="color:#8e44ad">'+db.utenti.filter(u=>u.attivo&&u.ruolo==="operatore").length+'</div><div class="lbl">Operatori Attivi</div></div>'
     +'</div>'
-
-    +(noData ? noDataMsg :
-
-    // RIGA 1: Trend mensile + Stato interventi
+    +(noData?noDataMsg:
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-    +'<div class="card"><div class="card-title">📈 Trend mensile interventi</div>'
-    +'<div style="display:flex;gap:12px;margin-bottom:8px;font-size:.75rem">'
-    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--arancio);border-radius:2px;display:inline-block"></span>Diserbo</span>'
-    +'<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--verde);border-radius:2px;display:inline-block"></span>Verde</span>'
-    +'</div>'
-    +trendDual(mesiD,mesiV)
-    +'</div>'
-
+    +'<div class="card"><div class="card-title">&#128200; Trend mensile</div>'
+    +'<div style="display:flex;gap:12px;margin-bottom:8px;font-size:.75rem"><span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--arancio);border-radius:2px;display:inline-block"></span>Diserbo</span><span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--verde);border-radius:2px;display:inline-block"></span>Verde</span></div>'
+    +trendDual(mD,mV)+'</div>'
     +'<div style="display:grid;grid-template-rows:1fr 1fr;gap:10px">'
-    +'<div class="card"><div class="card-title" style="font-size:.85rem">✂️ Stato Diserbo</div>'
-    +donutChart(statoD,['#27ae60','#f39c12','#e74c3c'])
-    +'</div>'
-    +'<div class="card"><div class="card-title" style="font-size:.85rem">🌿 Stato Verde</div>'
-    +donutChart(statoV,['#27ae60','#f39c12','#e74c3c'])
-    +'</div>'
-    +'</div>'
-    +'</div>'
-
-    // RIGA 2: Aree più attive
+    +'<div class="card"><div class="card-title" style="font-size:.85rem">&#9986;&#65039; Stato Diserbo</div>'+donutChart(statoD,['#27ae60','#f39c12','#e74c3c'])+'</div>'
+    +'<div class="card"><div class="card-title" style="font-size:.85rem">&#127807; Stato Verde</div>'+donutChart(statoV,['#27ae60','#f39c12','#e74c3c'])+'</div>'
+    +'</div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Aree diserbo più attive</div>'
-    +barChart(areeD,'var(--arancio)','interv.')
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">&#9986;&#65039; Aree diserbo top</div>'+barChart(areeD,'var(--arancio)','interv.')+'</div>'
+    +'<div class="card"><div class="card-title">&#127807; Aree verde top</div>'+barChart(areeV,'var(--verde)','interv.')+'</div>'
     +'</div>'
-    +'<div class="card"><div class="card-title">🌿 Aree verde più attive</div>'
-    +barChart(areeV,'var(--verde)','interv.')
-    +'</div>'
-    +'</div>'
-
-    // RIGA 3: Lavorazioni più frequenti
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Lavorazioni diserbo più frequenti</div>'
-    +barChart(lavD,'#e67e22','volte')
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">&#9986;&#65039; Lavorazioni diserbo top</div>'+barChart(lavD,'#e67e22','volte')+'</div>'
+    +'<div class="card"><div class="card-title">&#127807; Lavorazioni verde top</div>'+barChart(lavV,'#2ecc71','volte')+'</div>'
     +'</div>'
-    +'<div class="card"><div class="card-title">🌿 Lavorazioni verde più frequenti</div>'
-    +barChart(lavV,'#2ecc71','volte')
-    +'</div>'
-    +'</div>'
-
-    // RIGA 4: Ore per mese
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-    +'<div class="card"><div class="card-title" style="color:var(--arancio)">✂️ Ore uomo diserbo / mese</div>'
-    +barChart(oreD6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--arancio)','h')
-    +'<div class="text-small mt-8">Totale periodo: <strong>'+oreD.toFixed(1)+' ore</strong> &nbsp;|&nbsp; m²: <strong>'+mqD.toLocaleString('it-IT')+'</strong></div>'
-    +'</div>'
-    +'<div class="card"><div class="card-title">🌿 Ore uomo verde / mese</div>'
-    +barChart(oreV6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--verde)','h')
-    +'<div class="text-small mt-8">Totale periodo: <strong>'+oreV.toFixed(1)+' ore</strong> &nbsp;|&nbsp; m²: <strong>'+mqV.toLocaleString('it-IT')+'</strong></div>'
-    +'</div>'
-    +'</div>'
-
-    )
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+    +'<div class="card"><div class="card-title" style="color:var(--arancio)">&#9986;&#65039; Ore diserbo/mese</div>'+barChart(oreD6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--arancio)','h')
+    +'<div class="text-small mt-8">Totale: <strong>'+oreD.toFixed(1)+'h</strong> | m&sup2;: <strong>'+mqD.toLocaleString('it-IT')+'</strong></div></div>'
+    +'<div class="card"><div class="card-title">&#127807; Ore verde/mese</div>'+barChart(oreV6.map(([m,v])=>[m.slice(5)+'/'+m.slice(2,4),parseFloat(v.toFixed(1))]),'var(--verde)','h')
+    +'<div class="text-small mt-8">Totale: <strong>'+oreV.toFixed(1)+'h</strong> | m&sup2;: <strong>'+mqV.toLocaleString('it-IT')+'</strong></div></div>'
+    +'</div>')
     +'</div>';
 }
 
 // ============ ADMIN ============
 function renderAdmin(){
-  if(currentUser.ruolo!=='admin')return'<div class="card"><p>Accesso non autorizzato.</p></div>';
+  if(currentUser.ruolo!=='admin') return '<div class="card"><p>Accesso non autorizzato.</p></div>';
   return '<div>'
     +'<div class="admin-grid">'
-    +'<div class="admin-section-card"><h4>&#128100; Utenti Sistema</h4><div id="admin-utenti">'+renderAdminUtenti()+'</div>'
+    +'<div class="admin-section-card"><h4>&#128100; Utenti</h4><div id="admin-utenti">'+renderAdminUtenti()+'</div>'
     +'<div class="add-form mt-8"><input type="text" id="nu-nome" placeholder="Nome"><input type="text" id="nu-cogn" placeholder="Cognome"><input type="text" id="nu-user" placeholder="Username"><input type="password" id="nu-pass" placeholder="Password"><select id="nu-ruolo"><option value="operatore">Operatore</option><option value="consultazione">Consultazione</option><option value="admin">Admin</option></select><button class="btn btn-verde btn-sm" onclick="addUtente()">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#9986;&#65039; Settori Diserbo</h4><div id="admin-sd">'+renderAdminList('settoriDiserbo','sd')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-sd" placeholder="Nome settore"><button class="btn btn-verde btn-sm" onclick="addItem(&apos;settoriDiserbo&apos;,&apos;sd&apos;)">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#128506;&#65039; Aree Diserbo</h4><div id="admin-ad">'+renderAdminListAree('areeDiserbo','settoriDiserbo','ad')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-ad-nome" placeholder="Nome area"><input type="number" id="new-ad-mq" placeholder="mq" style="max-width:80px"><select id="new-ad-sett">'+db.settoriDiserbo.filter(s=>s.attivo).map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select><button class="btn btn-verde btn-sm" onclick="addArea(&apos;areeDiserbo&apos;,&apos;settoriDiserbo&apos;,&apos;ad&apos;)">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#128295; Lavorazioni Diserbo</h4><div id="admin-ld">'+renderAdminList('lavorazioniDiserbo','ld')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-ld" placeholder="Nome lavorazione"><button class="btn btn-verde btn-sm" onclick="addItem(&apos;lavorazioniDiserbo&apos;,&apos;ld&apos;)">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#127807; Settori Verde</h4><div id="admin-sv">'+renderAdminList('settoriVerde','sv')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-sv" placeholder="Nome settore"><button class="btn btn-verde btn-sm" onclick="addItem(&apos;settoriVerde&apos;,&apos;sv&apos;)">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#128506;&#65039; Aree Verde</h4><div id="admin-av">'+renderAdminListAree('areeVerde','settoriVerde','av')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-av-nome" placeholder="Nome area"><input type="number" id="new-av-mq" placeholder="mq" style="max-width:80px"><select id="new-av-sett">'+db.settoriVerde.filter(s=>s.attivo).map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select><button class="btn btn-verde btn-sm" onclick="addArea(&apos;areeVerde&apos;,&apos;settoriVerde&apos;,&apos;av&apos;)">+ Aggiungi</button></div></div>'
-    +'<div class="admin-section-card"><h4>&#128295; Lavorazioni Verde</h4><div id="admin-lv">'+renderAdminList('lavorazioniVerde','lv')+'</div>'
-    +'<div class="add-form mt-8"><input type="text" id="new-lv" placeholder="Nome lavorazione"><button class="btn btn-verde btn-sm" onclick="addItem(&apos;lavorazioniVerde&apos;,&apos;lv&apos;)">+ Aggiungi</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#9986;&#65039; Settori Diserbo</h4><div id="admin-sd">'+renderAdminList('settoriDiserbo','sd')+'</div><div class="add-form mt-8"><input type="text" id="new-sd" placeholder="Nome"><button class="btn btn-verde btn-sm" onclick="addItem(\'settoriDiserbo\',\'sd\')">+</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#128506;&#65039; Aree Diserbo</h4><div id="admin-ad">'+renderAdminListAree('areeDiserbo','settoriDiserbo','ad')+'</div><div class="add-form mt-8"><input type="text" id="new-ad-nome" placeholder="Nome"><input type="number" id="new-ad-mq" placeholder="mq" style="max-width:80px"><select id="new-ad-sett">'+db.settoriDiserbo.filter(s=>s.attivo).map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select><button class="btn btn-verde btn-sm" onclick="addArea(\'areeDiserbo\',\'settoriDiserbo\',\'ad\')">+</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#128295; Lavorazioni Diserbo</h4><div id="admin-ld">'+renderAdminList('lavorazioniDiserbo','ld')+'</div><div class="add-form mt-8"><input type="text" id="new-ld" placeholder="Nome"><button class="btn btn-verde btn-sm" onclick="addItem(\'lavorazioniDiserbo\',\'ld\')">+</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#127807; Settori Verde</h4><div id="admin-sv">'+renderAdminList('settoriVerde','sv')+'</div><div class="add-form mt-8"><input type="text" id="new-sv" placeholder="Nome"><button class="btn btn-verde btn-sm" onclick="addItem(\'settoriVerde\',\'sv\')">+</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#128506;&#65039; Aree Verde</h4><div id="admin-av">'+renderAdminListAree('areeVerde','settoriVerde','av')+'</div><div class="add-form mt-8"><input type="text" id="new-av-nome" placeholder="Nome"><input type="number" id="new-av-mq" placeholder="mq" style="max-width:80px"><select id="new-av-sett">'+db.settoriVerde.filter(s=>s.attivo).map(s=>'<option value="'+s.id+'">'+s.nome+'</option>').join('')+'</select><button class="btn btn-verde btn-sm" onclick="addArea(\'areeVerde\',\'settoriVerde\',\'av\')">+</button></div></div>'
+    +'<div class="admin-section-card"><h4>&#128295; Lavorazioni Verde</h4><div id="admin-lv">'+renderAdminList('lavorazioniVerde','lv')+'</div><div class="add-form mt-8"><input type="text" id="new-lv" placeholder="Nome"><button class="btn btn-verde btn-sm" onclick="addItem(\'lavorazioniVerde\',\'lv\')">+</button></div></div>'
     +'</div>'
-    +'<div class="card"><div class="card-title">&#9888;&#65039; Gestione Database &amp; Firebase</div>'
-    +'<div class="alert alert-info" style="margin-bottom:10px">&#9728;&#65039; <strong>Stato Firebase:</strong> <span id="fb-status">'+( useFirebase?'&#9989; Connesso — database cloud condiviso':'&#128274; Non configurato — database locale (ogni dispositivo separato)')+'</span></div>'
-    +'<div class="flex-row"><button class="btn btn-rosso btn-sm" onclick="if(confirm(&apos;ATTENZIONE: Eliminare TUTTI i dati? Questa operazione non può essere annullata!&apos;))resetDB()">&#128465; Reset completo DB</button>'
+    +'<div class="card"><div class="card-title">&#9888;&#65039; Database &amp; Firebase</div>'
+    +'<div class="alert alert-info" style="margin-bottom:10px">&#9728;&#65039; <strong>Stato:</strong> '+(useFirebase?'&#9989; Firebase connesso — database cloud condiviso':'&#128274; Locale — ogni dispositivo separato. Configura Firebase.')+'</div>'
+    +'<div class="flex-row">'
+    +'<button class="btn btn-rosso btn-sm" onclick="if(confirm(&apos;ATTENZIONE: Eliminare TUTTI i dati?&apos;))resetDB()">&#128465; Reset DB</button>'
     +'<button class="btn btn-grigio btn-sm" onclick="esportaBackup()">&#128229; Backup JSON</button>'
-    +'<span class="text-small">Reg. Diserbo: <strong>'+db.registrazioniDiserbo.length+'</strong> &nbsp;| Reg. Verde: <strong>'+db.registrazioniVerde.length+'</strong></span></div></div>'
+    +'<span class="text-small">Diserbo: <strong>'+(db.registrazioniDiserbo||[]).length+'</strong> | Verde: <strong>'+(db.registrazioniVerde||[]).length+'</strong></span>'
+    +'</div></div>'
     +'</div>';
 }
-
 function renderAdminUtenti(){
-  return db.utenti.map(u=>'<div class="admin-item"><span class="item-name">'+u.nome+' '+u.cognome+' <span class="text-small">('+u.username+') ['+ruoliLabel[u.ruolo]+']</span></span>'
-    +'<div class="item-actions">'
-    +'<button class="btn btn-sm" style="background:'+(u.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" onclick="toggleItem(&apos;utenti&apos;,this.dataset.id)" data-id="'+u.id+'">'+( u.attivo?'ON':'OFF')+'</button>'
-    +(u.id!=='u1'?'<button class="btn btn-rosso btn-sm" onclick="deleteItem(&apos;utenti&apos;,this.dataset.id)" data-id="'+u.id+'">&#128465;</button>':'')
-    +'</div></div>').join('');
+  return (db.utenti||[]).map(u=>'<div class="admin-item"><span class="item-name">'+u.nome+' '+u.cognome+' <span class="text-small">('+u.username+') ['+ruoliLabel[u.ruolo]+']</span></span><div class="item-actions"><button class="btn btn-sm" style="background:'+(u.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" data-tbl="utenti" data-id="'+u.id+'" onclick="toggleItem(this.dataset.tbl,this.dataset.id)">'+(u.attivo?'ON':'OFF')+'</button>'+(u.id!=='u1'?'<button class="btn btn-rosso btn-sm" data-tbl="utenti" data-id="'+u.id+'" onclick="deleteItem(this.dataset.tbl,this.dataset.id)">&#128465;</button>':'')+'</div></div>').join('');
 }
 function renderAdminList(tbl,pfx){
-  return db[tbl].map(it=>'<div class="admin-item"><span class="item-name" style="'+(it.attivo?'':'opacity:.5;text-decoration:line-through')+'">'+it.nome+'</span>'
-    +'<div class="item-actions">'
-    +'<button class="btn btn-sm" style="background:'+(it.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" onclick="toggleItem(this.dataset.tbl,this.dataset.id)" data-tbl="'+tbl+'" data-id="'+it.id+'">'+( it.attivo?'ON':'OFF')+'</button>'
-    +'<button class="btn btn-rosso btn-sm" onclick="deleteItem(this.dataset.tbl,this.dataset.id)" data-tbl="'+tbl+'" data-id="'+it.id+'">&#128465;</button>'
-    +'</div></div>').join('');
+  return (db[tbl]||[]).map(it=>'<div class="admin-item"><span class="item-name" style="'+(it.attivo?'':'opacity:.5;text-decoration:line-through')+'">'+it.nome+'</span><div class="item-actions"><button class="btn btn-sm" style="background:'+(it.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" data-tbl="'+tbl+'" data-id="'+it.id+'" onclick="toggleItem(this.dataset.tbl,this.dataset.id)">'+(it.attivo?'ON':'OFF')+'</button><button class="btn btn-rosso btn-sm" data-tbl="'+tbl+'" data-id="'+it.id+'" onclick="deleteItem(this.dataset.tbl,this.dataset.id)">&#128465;</button></div></div>').join('');
 }
 function renderAdminListAree(tbl,stbl,pfx){
-  return db[tbl].map(a=>{const s=db[stbl].find(x=>x.id===a.settoreId);
-    return '<div class="admin-item"><span class="item-name" style="'+(a.attivo?'':'opacity:.5;text-decoration:line-through')+'">'+a.nome+' <span class="text-small">'+a.superficie+'mq &mdash; '+(s?s.nome:'')+'</span></span>'
-    +'<div class="item-actions">'
-    +'<button class="btn btn-sm" style="background:'+(a.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" onclick="toggleItem(this.dataset.tbl,this.dataset.id)" data-tbl="'+tbl+'" data-id="'+a.id+'">'+( a.attivo?'ON':'OFF')+'</button>'
-    +'<button class="btn btn-rosso btn-sm" onclick="deleteItem(this.dataset.tbl,this.dataset.id)" data-tbl="'+tbl+'" data-id="'+a.id+'">&#128465;</button>'
-    +'</div></div>';}).join('');
+  return (db[tbl]||[]).map(a=>{const s=db[stbl].find(x=>x.id===a.settoreId);return '<div class="admin-item"><span class="item-name" style="'+(a.attivo?'':'opacity:.5;text-decoration:line-through')+'">'+a.nome+' <span class="text-small">'+a.superficie+'mq &mdash; '+(s?s.nome:'')+'</span></span><div class="item-actions"><button class="btn btn-sm" style="background:'+(a.attivo?'#d4efdf':'#fadbd8')+';color:var(--grigio)" data-tbl="'+tbl+'" data-id="'+a.id+'" onclick="toggleItem(this.dataset.tbl,this.dataset.id)">'+(a.attivo?'ON':'OFF')+'</button><button class="btn btn-rosso btn-sm" data-tbl="'+tbl+'" data-id="'+a.id+'" onclick="deleteItem(this.dataset.tbl,this.dataset.id)">&#128465;</button></div></div>';}).join('');
 }
-
 function addUtente(){
   const nome=document.getElementById('nu-nome').value.trim();
   const cogn=document.getElementById('nu-cogn').value.trim();
@@ -983,7 +1115,7 @@ function addUtente(){
   const pass=document.getElementById('nu-pass').value.trim();
   const ruolo=document.getElementById('nu-ruolo').value;
   if(!nome||!user||!pass){alert('Compilare nome, username e password.');return;}
-  if(db.utenti.find(u=>u.username===user)){alert('Username già esistente.');return;}
+  if(db.utenti.find(u=>u.username===user)){alert('Username gi\u00e0 esistente.');return;}
   db.utenti.push({id:'u'+Date.now(),nome,cognome:cogn,username:user,password:pass,ruolo,attivo:true});
   saveDB();document.getElementById('admin-utenti').innerHTML=renderAdminUtenti();
   ['nu-nome','nu-cogn','nu-user','nu-pass'].forEach(id=>document.getElementById(id).value='');
@@ -1004,18 +1136,18 @@ function addArea(tbl,stbl,pfx){
   saveDB();document.getElementById('admin-'+pfx).innerHTML=renderAdminListAree(tbl,stbl,pfx);
   document.getElementById('new-'+pfx+'-nome').value='';document.getElementById('new-'+pfx+'-mq').value='';
 }
-function toggleItem(tbl,id){const it=db[tbl].find(x=>x.id===id);if(it)it.attivo=!it.attivo;saveDB();routeTo('admin');}
+function toggleItem(tbl,id){const it=(db[tbl]||[]).find(x=>x.id===id);if(it)it.attivo=!it.attivo;saveDB();routeTo('admin');}
 function deleteItem(tbl,id){
-  if(!confirm('Eliminare definitivamente questo elemento?'))return;
-  db[tbl]=db[tbl].filter(x=>x.id!==id);saveDB();routeTo('admin');
+  if(!confirm('Eliminare definitivamente?'))return;
+  db[tbl]=(db[tbl]||[]).filter(x=>x.id!==id);saveDB();routeTo('admin');
 }
 function resetDB(){db=defaultDB();saveDB();routeTo('admin');}
 function esportaBackup(){
   const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='somica_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  a.download='somica_backup_'+oggi()+'.json';a.click();
 }
-
+function isGiornoLavorativo(data){const d=new Date(data);const dow=d.getDay();return dow>=1&&dow<=5;}
 function navGo(el){routeTo(el.dataset.r);}
 
 // Init Firebase on page load

@@ -96,14 +96,34 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f0;color:var(--
 .op-big-btn .icon{font-size:2rem;margin-bottom:6px;display:block;}
 .op-big-btn h3{font-size:.92rem;font-weight:700;color:var(--verde);}
 @media print{
-  #app-header,#main-nav,.no-print{display:none!important;}
-  body{background:#fff;}
+  @page{size:A4 landscape;margin:10mm 8mm 10mm 8mm;}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  #app-header,#main-nav,.no-print,button,.filter-bar{display:none!important;}
+  body{background:#fff!important;font-size:9pt;color:#000;}
+  #main-content{padding:0!important;max-width:100%!important;}
   .print-header{display:block!important;}
-  .card{box-shadow:none;border:1px solid #ddd;}
+  .card{box-shadow:none!important;border:1px solid #ccc!important;margin-bottom:8px!important;padding:8px!important;}
+  .stats-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:6px!important;margin-bottom:8px!important;}
+  .stat-card{padding:6px!important;border-top-width:3px!important;}
+  .stat-card .num{font-size:1.2rem!important;}
+  .stat-card .lbl{font-size:.62rem!important;}
+  .data-table{width:100%!important;border-collapse:collapse!important;font-size:7.5pt!important;table-layout:fixed;}
+  .data-table th{background:#1a5c2a!important;color:#fff!important;padding:4px 5px!important;font-size:7.5pt!important;text-align:left;white-space:normal!important;}
+  .data-table td{padding:3px 5px!important;border-bottom:1px solid #ddd!important;vertical-align:top!important;word-break:break-word!important;white-space:normal!important;}
+  .data-table tr:nth-child(even) td{background:#f5faf6!important;}
+  .badge,.badge-verde,.badge-giallo,.badge-rosso,.badge-bozza,.badge-inviato,.badge-approvato{font-size:6.5pt!important;padding:1px 4px!important;}
+  .print-header{margin-bottom:10px!important;}
+  .hidden{display:none!important;}
+  /* UTC: nascondi nomi, mostra solo conteggio */
+  body.utc-print .ops-names{display:none!important;}
+  body.utc-print .ops-count{display:inline!important;}
+  /* Admin: mostra nomi, nascondi conteggio */
+  body:not(.utc-print) .ops-count{display:none!important;}
 }
-.print-header{display:none;text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--verde);}
-.print-header img{height:55px;margin-bottom:6px;}
-.print-header .intestazione{font-size:.68rem;color:#555;line-height:1.6;margin-top:6px;}
+.print-header{display:none;text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--verde);}
+.print-header img{height:50px;margin-bottom:4px;}
+.print-header .intestazione{font-size:.68rem;color:#555;line-height:1.5;margin-top:4px;}
+.print-header h2{font-size:1rem;margin-top:8px;}
 /* BOZZE E NOTIFICHE */
 .badge-bozza{background:#fff3cd;color:#856404;border:1.5px solid #ffc107;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
 .badge-inviato{background:#d1ecf1;color:#0c5460;border:1.5px solid #17a2b8;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:700;}
@@ -327,11 +347,6 @@ function doLogin(){
   document.getElementById('app-screen').classList.remove('hidden');
   document.getElementById('user-name-hdr').textContent=ut.nome+' '+ut.cognome+' ['+ruoliLabel[ut.ruolo]+']';
   buildNav();routeTo('home');
-  // Se admin, avvia controllo automatico ore al login
-  if(ut.ruolo === 'admin'){
-    // Piccolo ritardo per dare tempo a Firebase di caricare i dati
-    setTimeout(()=>controlloGiornalieroOre(), 3000);
-  }
 }
 function doLogout(){
   currentUser=null;
@@ -731,7 +746,7 @@ function renderTabella(modulo){
         +'<td><strong>'+r.data+'</strong></td>'
         +(isD?'<td>'+(s?s.nome:'-')+'</td>':'')
         +'<td>'+(a?a.nome:'-')+'</td>'
-        +'<td style="font-size:.8rem">'+ops+'</td>'
+        +'<td style="font-size:.8rem"><span class="ops-names">'+ops+'</span><span class="ops-count" style="display:none">'+(r.operatori||[]).length+' operatori</span></td>'
         +'<td style="max-width:180px;font-size:.78rem">'+lavNomi+'</td>'
         +'<td>'+(r.ore||'-')+'</td>'
         +'<td><strong>'+(r.oreTotali||0).toFixed(1)+'</strong></td>'
@@ -923,8 +938,6 @@ function renderMieRegistrazioni(){
 // ============ NOTIFICHE ADMIN ============
 function renderNotifiche(){
   if(currentUser.ruolo!=='admin') return '<div class="card"><p>Accesso non autorizzato.</p></div>';
-  // Avvia controllo automatico ore ogni volta che admin apre le notifiche
-  controlloGiornalieroOre();
   const notifiche=(db.notifiche||[]).sort((a,b)=>b.creato.localeCompare(a.creato));
   const bozzeBloccate=[...(db.registrazioniDiserbo||[]).map(r=>({...r,_mod:'diserbo'})),...(db.registrazioniVerde||[]).map(r=>({...r,_mod:'verde'}))]
     .filter(r=>r.statoInvio==='bozza'&&r.data<oggi()).sort((a,b)=>b.data.localeCompare(a.data));
@@ -972,38 +985,48 @@ function renderNotifiche(){
       const r=arr.find(x=>x.id===n.regId);
       if(!r)return;
       const aree=n.modulo==='diserbo'?db.areeDiserbo:db.areeVerde;
+      const lavs=n.modulo==='diserbo'?db.lavorazioniDiserbo:db.lavorazioniVerde;
+      const sett=n.modulo==='diserbo'?db.settoriDiserbo:db.settoriVerde;
       const a=aree.find(x=>x.id===r.areaId);
-      const ops=(r.operatori||[]).map(oid=>{const u=db.utenti.find(x=>x.id===oid);return u?u.nome+' '+u.cognome:oid;}).join(', ');
-      html+='<div class="notif-card">'
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
-        +'<div><strong>'+r.data+'</strong> &mdash; '+(n.modulo==='diserbo'?'&#9986;&#65039;':'&#127807;')+' '+(a?a.nome:'Area')
-        +(r.inviatoPerConto?' <span class="text-small" style="color:var(--arancio)">(inviato dall\'admin)</span>':'')
-        +'<br><span class="text-small">Operatori: '+ops+' &mdash; Ore: '+(r.ore||'-')+'h &mdash; Stato: '+r.stato+'</span></div>'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      const s=sett?sett.find(x=>x.id===r.settoreId):null;
+      const opsDettaglio=(r.operatori||[]).map(function(oid){
+        const u=db.utenti.find(x=>x.id===oid);
+        const nome=u?u.nome+' '+u.cognome:oid;
+        const ore=r.oreIndividuali&&r.oreIndividuali[oid]!==undefined?r.oreIndividuali[oid]:(r.ore||'-');
+        return nome+' ('+ore+'h)';
+      }).join(', ');
+      const lavNomi=(r.lavorazioni||[]).map(function(lid){
+        if(lid==='lv17_2') return '2ª Verifica irrigazione';
+        const l=lavs.find(x=>x.id===lid);
+        return l?l.nome:lid;
+      }).join(' • ');
+      const statoColor=r.stato==='completata'?'#27ae60':r.stato==='sospesa'?'#e74c3c':'#f39c12';
+      const borderColor=n.modulo==='diserbo'?'#d4500a':'#1a5c2a';
+      html+='<div class="notif-card" style="border-left-color:'+borderColor+';padding:14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">'
+        +'<div style="flex:1;min-width:250px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+        +'<span style="font-size:1.1rem">'+(n.modulo==='diserbo'?'&#9986;&#65039;':'&#127807;')+'</span>'
+        +'<strong style="font-size:.95rem">'+r.data+'</strong>'
+        +(r.inviatoPerConto?'<span class="text-small" style="color:var(--arancio)">(inviato dall&#39;admin)</span>':'')
+        +'<span style="padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:700;background:'+statoColor+'22;color:'+statoColor+'">'+r.stato+'</span>'
+        +'</div>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:.83rem;border:1px solid #eee;border-radius:6px;overflow:hidden">'
+        +'<tr><td style="padding:5px 10px;color:var(--grigio-mid);background:#f9f9f9;width:120px;font-weight:600">&#128205; Area</td>'
+        +'<td style="padding:5px 10px"><strong>'+(a?a.nome:'-')+(s?' &mdash; '+s.nome:'')+'</strong>'+(a?' ('+a.superficie+' m&sup2;)':'')+'</td></tr>'
+        +'<tr><td style="padding:5px 10px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600">&#128119; Operatori</td>'
+        +'<td style="padding:5px 10px">'+opsDettaglio+'</td></tr>'
+        +'<tr><td style="padding:5px 10px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600">&#9201;&#65039; Ore totali</td>'
+        +'<td style="padding:5px 10px"><strong>'+(r.oreTotali||0).toFixed(1)+'h</strong></td></tr>'
+        +'<tr><td style="padding:5px 10px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600;vertical-align:top">&#128295; Lavorazioni</td>'
+        +'<td style="padding:5px 10px">'+lavNomi+'</td></tr>'
+        +(r.note?'<tr><td style="padding:5px 10px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600;vertical-align:top">&#128221; Note</td>'
+        +'<td style="padding:5px 10px;font-style:italic;color:#555">'+r.note+'</td></tr>':'')
+        +'</table>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">'
         +'<button class="btn btn-grigio btn-sm" data-mod="'+n.modulo+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998; Modifica</button>'
         +'<button class="btn btn-verde btn-sm" data-mod="'+n.modulo+'" data-id="'+r.id+'" onclick="adminApprovaRegistrazione(this.dataset.mod,this.dataset.id)">&#9989; Approva</button>'
-        +'</div></div></div>';
-    });
-    html+='</div>';
-  }
-  if(oreProblemi.length){
-    html+='<div class="card"><div class="card-title" style="color:var(--giallo)">&#9201;&#65039; Ore insufficienti</div>';
-    oreProblemi.forEach(function(n){
-      const oreLabel = n.oreTot === 0
-        ? '<strong style="color:var(--rosso)">0h — nessuna registrazione</strong>'
-        : '<strong style="color:var(--giallo)">'+n.oreTot+'h</strong> su 8h previste';
-      const tipoLabel = n.oreTot === 0
-        ? '&#128683; Assente (nessuna registrazione)'
-        : '&#9201;&#65039; Ore insufficienti';
-      html+='<div class="notif-card">'
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
-        +'<div>'
-        +'<span style="font-size:.75rem;font-weight:700;color:var(--grigio-mid)">'+tipoLabel+'</span><br>'
-        +'<strong>'+n.opNome+'</strong> &mdash; '+n.data
-        +'<br><span class="text-small">Ore registrate: '+oreLabel+'</span>'
-        +'</div>'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-        +'<button class="btn btn-verde btn-sm" data-notif="'+n.id+'" onclick="adminApprovaAssenza(this.dataset.notif)">&#9989; Approva assenza/permesso</button>'
         +'</div></div></div>';
     });
     html+='</div>';
@@ -1166,104 +1189,15 @@ function esportaBackup(){
 function isGiornoLavorativo(data){const d=new Date(data);const dow=d.getDay();return dow>=1&&dow<=5;}
 function navGo(el){routeTo(el.dataset.r);}
 
-// ============================================================
-// CONTROLLO AUTOMATICO ORE GIORNALIERO
-// Si attiva quando admin apre il programma o le notifiche
-// Controlla tutti i giorni lavorativi dall'ultima verifica ad oggi
-// ============================================================
-function controlloGiornalieroOre(){
-  if(!currentUser || currentUser.ruolo !== 'admin') return;
-  if(!db.notifiche) db.notifiche = [];
-
-  // Recupera l'ultima data verificata (salva in db per persistenza)
-  if(!db._ultimoControlloOre) db._ultimoControlloOre = null;
-
-  const oggiStr = oggi();
-
-  // Costruisce lista di giorni lavorativi da verificare:
-  // dall'ultima verifica (esclusa) fino a ieri (incluso)
-  // Mai verificare oggi perché gli operatori potrebbero ancora registrare
-  const giorniDaVerificare = [];
-  let cursore = new Date();
-  cursore.setDate(cursore.getDate() - 1); // parti da ieri
-
-  // Vai indietro massimo 30 giorni per sicurezza
-  for(let i = 0; i < 30; i++){
-    const dataStr = cursore.toISOString().slice(0, 10);
-
-    // Fermati se raggiungi l'ultima data già verificata
-    if(db._ultimoControlloOre && dataStr <= db._ultimoControlloOre) break;
-
-    // Solo giorni lavorativi (lun-ven)
-    const dow = cursore.getDay();
-    if(dow >= 1 && dow <= 5){
-      giorniDaVerificare.push(dataStr);
-    }
-
-    cursore.setDate(cursore.getDate() - 1);
+// Gestione stampa: aggiunge classe al body per UTC
+window.addEventListener('beforeprint', function(){
+  if(currentUser && currentUser.ruolo === 'consultazione'){
+    document.body.classList.add('utc-print');
   }
-
-  if(giorniDaVerificare.length === 0){
-    // Niente di nuovo da verificare
-    return;
-  }
-
-  // Per ogni giorno da verificare, controlla ogni operatore
-  const operatoriAttivi = db.utenti.filter(u => u.attivo && u.ruolo === 'operatore');
-
-  giorniDaVerificare.forEach(data => {
-    operatoriAttivi.forEach(op => {
-      // Calcola ore totali di questo operatore per questa data
-      // considera sia registrazioni proprie che quelle fatte da compagni di squadra
-      // usa oreIndividuali se presenti, altrimenti ore generiche
-      const regs = [...(db.registrazioniDiserbo||[]), ...(db.registrazioniVerde||[])]
-        .filter(r => r.data === data && r.operatori && r.operatori.includes(op.id) && r.statoInvio !== 'bozza');
-
-      const oreTot = regs.reduce((s, r) => {
-        if(r.oreIndividuali && r.oreIndividuali[op.id] !== undefined){
-          return s + (r.oreIndividuali[op.id] || 0);
-        }
-        return s + (r.ore || 0);
-      }, 0);
-
-      // Rimuovi eventuale notifica precedente per questo operatore+data
-      db.notifiche = db.notifiche.filter(n => !(n.tipo === 'ore' && n.opId === op.id && n.data === data));
-
-      // Genera notifica se ore < 8 (include anche 0 ore = assente non giustificato)
-      if(oreTot < 8){
-        // Non generare se già approvata assenza in precedenza
-        const giaApprovata = (db.notifiche||[]).some(n =>
-          n.tipo === 'ore' && n.opId === op.id && n.data === data && n.stato === 'assenza_approvata'
-        );
-        if(!giaApprovata){
-          db.notifiche.push({
-            id: 'ore_' + op.id + '_' + data,
-            tipo: 'ore',
-            opId: op.id,
-            opNome: op.nome + ' ' + op.cognome,
-            data,
-            oreTot,
-            stato: 'da_verificare',
-            creato: new Date().toISOString(),
-            letto: false
-          });
-        }
-      }
-    });
-  });
-
-  // Aggiorna ultima data verificata (il più recente tra i giorni controllati)
-  const piuRecente = giorniDaVerificare.sort().reverse()[0];
-  db._ultimoControlloOre = piuRecente;
-
-  saveDB();
-  aggiornaBadgeNotifiche();
-
-  const nuove = giorniDaVerificare.length;
-  if(nuove > 0){
-    console.log('Controllo ore completato: verificati ' + nuove + ' giorni lavorativi.');
-  }
-}
+});
+window.addEventListener('afterprint', function(){
+  document.body.classList.remove('utc-print');
+});
 
 // Init Firebase on page load
 window.addEventListener('load', initFirebase);

@@ -119,12 +119,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f0;color:var(--
 .btn-bozza:hover{background:#e0a800;}
 .ore-warning{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:.85rem;color:#856404;margin-bottom:8px;}
 .ore-ok{background:#d4efdf;border:1px solid #27ae60;border-radius:6px;padding:8px 12px;font-size:.85rem;color:#1e8449;margin-bottom:8px;}
-.op-ore-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:4px;cursor:pointer;}
-.op-ore-row:hover{background:var(--verde-pale);}
-.op-ore-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex-shrink:0;accent-color:var(--verde);}
-.op-ore-row .op-nome{flex:1;font-size:.88rem;}
-.op-ore-input{width:65px;padding:4px 6px;border:1.5px solid var(--bordo);border-radius:5px;font-size:.85rem;text-align:center;display:none;}
-.op-ore-input.visible{display:block;}
 </style>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -333,6 +327,11 @@ function doLogin(){
   document.getElementById('app-screen').classList.remove('hidden');
   document.getElementById('user-name-hdr').textContent=ut.nome+' '+ut.cognome+' ['+ruoliLabel[ut.ruolo]+']';
   buildNav();routeTo('home');
+  // Se admin, avvia controllo automatico ore al login
+  if(ut.ruolo === 'admin'){
+    // Piccolo ritardo per dare tempo a Firebase di caricare i dati
+    setTimeout(()=>controlloGiornalieroOre(), 3000);
+  }
 }
 function doLogout(){
   currentUser=null;
@@ -459,14 +458,15 @@ function renderFormDiserbo(pf){
     +'</div>'
     +'<div class="form-group"><label>&#128119; Operatori * <span class="text-small">(seleziona tutti)</span></label>'
     +'<div class="checklist" id="d-operatori">'
-    +ops.map(o=>{const preOre=p.oreIndividuali&&p.oreIndividuali[o.id]?p.oreIndividuali[o.id]:'';const checked=p.operatori&&p.operatori.includes(o.id);return '<div class="op-ore-row"><input type="checkbox" value="'+o.id+'"'+(checked?' checked':'')+' onchange="toggleOreInput(this)"><span class="op-nome">'+o.nome+' '+o.cognome+'</span><input type="number" class="op-ore-input'+(checked?' visible':'')+'" data-opid="'+o.id+'" min="0.5" max="24" step="0.5" placeholder="ore" value="'+preOre+'"></div>';}).join('')
+    +ops.map(o=>'<label><input type="checkbox" value="'+o.id+'"'+(p.operatori&&p.operatori.includes(o.id)?' checked':'')+'>'+' '+o.nome+' '+o.cognome+'</label>').join('')
     +'</div></div>'
     +'<div class="form-group"><label>&#128295; Lavorazioni *</label>'
     +'<div class="checklist" id="d-lavorazioni">'
     +lav.map(l=>'<label><input type="checkbox" value="'+l.id+'"'+(p.lavorazioni&&p.lavorazioni.includes(l.id)?' checked':'')+'>'+' '+l.nome+'</label>').join('')
     +'</div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="form-group"><label>&#9201;&#65039; Ore per operatore</label><p class="text-small" style="margin-top:4px;color:var(--grigio-mid)">Inserisci le ore accanto a ciascun operatore selezionato.</p></div>'
+    +'<div class="form-group"><label>&#9201;&#65039; Ore/operatore</label>'
+    +'<input type="number" id="d-ore" min="0.5" max="24" step="0.5" placeholder="es. 8" value="'+(p.ore||'')+'"></div>'
     +'<div class="form-group"><label>&#128202; Stato lavorazione *</label>'
     +'<div class="stato-flags">'
     +'<label class="stato-flag"><input type="radio" name="d-stato-r" value="completata"'+((!p.stato||p.stato==="completata")?" checked":"")+'>'+' &#9989; Completata</label>'
@@ -502,15 +502,7 @@ function salvaDiserbo(editId){
   const aid=document.getElementById('d-area').value;
   const operatori=[...document.querySelectorAll('#d-operatori input:checked')].map(i=>i.value);
   const lavorazioni=[...document.querySelectorAll('#d-lavorazioni input:checked')].map(i=>i.value);
-  // Ore individuali per operatore
-  const oreIndividuali={};
-  document.querySelectorAll('#d-operatori input[type=checkbox]:checked').forEach(cb=>{
-    const opId=cb.value;
-    const oreInput=document.querySelector('#d-operatori input[data-opid="'+opId+'"]');
-    oreIndividuali[opId]=parseFloat(oreInput&&oreInput.value?oreInput.value:0)||0;
-  });
-  const ore=Object.values(oreIndividuali).length>0?Math.max(...Object.values(oreIndividuali)):0;
-  const oreTotaliCalcolate=Object.values(oreIndividuali).reduce((s,v)=>s+v,0);
+  const ore=parseFloat(document.getElementById('d-ore').value)||0;
   const stato=document.querySelector('input[name="d-stato-r"]:checked');
   const note=document.getElementById('d-note').value.trim();
   const invSel=document.querySelector('input[name="d-inv"]:checked');
@@ -522,7 +514,7 @@ function salvaDiserbo(editId){
   if(!lavorazioni.length){msg.innerHTML='<div class="alert alert-error">Selezionare almeno una lavorazione.</div>';return;}
   if(!stato){msg.innerHTML='<div class="alert alert-error">Indicare lo stato.</div>';return;}
   const area=db.areeDiserbo.find(a=>a.id===aid);
-  const rec={data,settoreId:sid,areaId:aid,operatori,lavorazioni,ore,oreIndividuali,oreTotali:oreTotaliCalcolate,stato:stato.value,note,superficieMq:area?area.superficie:0,statoInvio};
+  const rec={data,settoreId:sid,areaId:aid,operatori,lavorazioni,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq:area?area.superficie:0,statoInvio};
   if(editId&&editId!=='null'){
     const idx=db.registrazioniDiserbo.findIndex(r=>r.id===editId);
     if(idx>=0) db.registrazioniDiserbo[idx]={...db.registrazioniDiserbo[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
@@ -555,7 +547,7 @@ function renderFormVerde(pf){
     +'</select></div>'
     +'<div class="form-group"><label>&#128119; Operatori *</label>'
     +'<div class="checklist" id="v-operatori">'
-    +ops.map(o=>{const preOre=p.oreIndividuali&&p.oreIndividuali[o.id]?p.oreIndividuali[o.id]:'';const checked=p.operatori&&p.operatori.includes(o.id);return '<div class="op-ore-row"><input type="checkbox" value="'+o.id+'"'+(checked?' checked':'')+' onchange="toggleOreInput(this)"><span class="op-nome">'+o.nome+' '+o.cognome+'</span><input type="number" class="op-ore-input'+(checked?' visible':'')+'" data-opid="'+o.id+'" min="0.5" max="24" step="0.5" placeholder="ore" value="'+preOre+'"></div>';}).join('')
+    +ops.map(o=>'<label><input type="checkbox" value="'+o.id+'"'+(p.operatori&&p.operatori.includes(o.id)?' checked':'')+'>'+' '+o.nome+' '+o.cognome+'</label>').join('')
     +'</div></div>'
     +'<div class="form-group"><label>&#128295; Lavorazioni * <span class="text-small">(Verifica irrigazione pu&ograve; essere 2 volte)</span></label>'
     +'<div class="checklist" id="v-lavorazioni">'
@@ -564,7 +556,8 @@ function renderFormVerde(pf){
     +'</div>'
     +'<div id="v-campi-extra" class="mt-8"></div></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-    +'<div class="form-group"><label>&#9201;&#65039; Ore per operatore</label><p class="text-small" style="margin-top:4px;color:var(--grigio-mid)">Inserisci le ore accanto a ciascun operatore selezionato.</p></div>'
+    +'<div class="form-group"><label>&#9201;&#65039; Ore/operatore</label>'
+    +'<input type="number" id="v-ore" min="0.5" max="24" step="0.5" placeholder="es. 8" value="'+(p.ore||'')+'"></div>'
     +'<div class="form-group"><label>&#128202; Stato *</label>'
     +'<div class="stato-flags">'
     +'<label class="stato-flag"><input type="radio" name="v-stato-r" value="completata"'+((!p.stato||p.stato==="completata")?" checked":"")+'>'+' &#9989; Completata</label>'
@@ -609,15 +602,7 @@ function salvaVerde(editId){
   const aid=document.getElementById('v-area').value;
   const operatori=[...document.querySelectorAll('#v-operatori input:checked')].map(i=>i.value);
   const lavorazioni=[...document.querySelectorAll('#v-lavorazioni input:checked')].map(i=>i.value);
-  // Ore individuali per operatore
-  const oreIndividuali={};
-  document.querySelectorAll('#v-operatori input[type=checkbox]:checked').forEach(cb=>{
-    const opId=cb.value;
-    const oreInput=document.querySelector('#v-operatori input[data-opid="'+opId+'"]');
-    oreIndividuali[opId]=parseFloat(oreInput&&oreInput.value?oreInput.value:0)||0;
-  });
-  const ore=Object.values(oreIndividuali).length>0?Math.max(...Object.values(oreIndividuali)):0;
-  const oreTotaliCalcolate=Object.values(oreIndividuali).reduce((s,v)=>s+v,0);
+  const ore=parseFloat(document.getElementById('v-ore').value)||0;
   const stato=document.querySelector('input[name="v-stato-r"]:checked');
   const note=document.getElementById('v-note').value.trim();
   const invSel=document.querySelector('input[name="v-inv"]:checked');
@@ -640,7 +625,7 @@ function salvaVerde(editId){
   const nonSoloNoMq=lavorazioni.some(l=>!LAVORAZIONI_NO_MQ_VERDE.includes(l));
   const area=db.areeVerde.find(a=>a.id===aid);
   const superficieMq=nonSoloNoMq?(area?area.superficie:0):0;
-  const rec={data,areaId:aid,operatori,lavorazioni,noteExtra,ore,oreIndividuali,oreTotali:oreTotaliCalcolate,stato:stato.value,note,superficieMq,statoInvio};
+  const rec={data,areaId:aid,operatori,lavorazioni,noteExtra,ore,oreTotali:ore*operatori.length,stato:stato.value,note,superficieMq,statoInvio};
   if(editId&&editId!=='null'){
     const idx=db.registrazioniVerde.findIndex(r=>r.id===editId);
     if(idx>=0) db.registrazioniVerde[idx]={...db.registrazioniVerde[idx],...rec,modificatoDa:currentUser.id,modificatoIl:new Date().toISOString()};
@@ -748,7 +733,7 @@ function renderTabella(modulo){
         +'<td>'+(a?a.nome:'-')+'</td>'
         +'<td style="font-size:.8rem">'+ops+'</td>'
         +'<td style="max-width:180px;font-size:.78rem">'+lavNomi+'</td>'
-        +'<td>'+(r.oreIndividuali?'<span title="Ore individuali" style="font-size:.75rem;color:var(--grigio-mid)">varie</span>':( r.ore||'-'))+'</td>'
+        +'<td>'+(r.ore||'-')+'</td>'
         +'<td><strong>'+(r.oreTotali||0).toFixed(1)+'</strong></td>'
         +'<td>'+(r.superficieMq?r.superficieMq.toLocaleString('it-IT'):'-')+'</td>'
         +'<td><span class="badge '+(sClass[r.stato]||'')+'">'+(sLabel[r.stato]||r.stato)+'</span></td>'
@@ -866,38 +851,19 @@ function generaNotificheApprovazione(regId){
   db.notifiche.push({id:'notif_'+Date.now(),tipo:'approvazione',regId,modulo:isD?'diserbo':'verde',data:r.data,operatori:r.operatori,creato:new Date().toISOString(),letto:false});
 }
 function generaNotificheOre(data){
-  if(!data) return;
+  if(!data||!isGiornoLavorativo(data)) return;
   if(!db.notifiche) db.notifiche=[];
   const operatoriAttivi=db.utenti.filter(u=>u.attivo&&u.ruolo==='operatore');
   operatoriAttivi.forEach(op=>{
-    // Prendi solo registrazioni definitive (non bozze) per questa data
+    // Calcola ore dalle registrazioni definitive (non bozze)
+    // Un operatore contribuisce con le sue ore in una registrazione solo se compare nella lista operatori
     const regs=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
       .filter(r=>r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza');
-    // Calcola ore individuali: usa oreIndividuali[op.id] se presente, altrimenti ore generiche
-    const oreTot=regs.reduce((s,r)=>{
-      if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined){
-        return s+(r.oreIndividuali[op.id]||0);
-      }
-      return s+(r.ore||0);
-    },0);
-    // Rimuovi notifica precedente per questo operatore+data
+    // Somma le ore specifiche per questo operatore (campo ore = ore per singolo operatore)
+    const oreTot=regs.reduce((s,r)=>s+(r.ore||0),0);
     db.notifiche=db.notifiche.filter(n=>!(n.tipo==='ore'&&n.opId===op.id&&n.data===data));
-    // Genera notifica solo se ore < 8 e ha almeno qualcosa registrato
-    // Sabato (6) e domenica (0) notifica solo se ha registrazioni (lavoro straordinario)
-    const dow=new Date(data).getDay();
-    const isWeekend=dow===0||dow===6;
-    if(oreTot>0&&oreTot<8&&(!isWeekend)){
-      db.notifiche.push({
-        id:'ore_'+op.id+'_'+data,
-        tipo:'ore',
-        opId:op.id,
-        opNome:op.nome+' '+op.cognome,
-        data,
-        oreTot,
-        stato:'da_verificare',
-        creato:new Date().toISOString(),
-        letto:false
-      });
+    if(oreTot<8&&oreTot>0){
+      db.notifiche.push({id:'ore_'+op.id+'_'+data,tipo:'ore',opId:op.id,opNome:op.nome+' '+op.cognome,data,oreTot,stato:'da_verificare',creato:new Date().toISOString(),letto:false});
     }
   });
 }
@@ -957,6 +923,8 @@ function renderMieRegistrazioni(){
 // ============ NOTIFICHE ADMIN ============
 function renderNotifiche(){
   if(currentUser.ruolo!=='admin') return '<div class="card"><p>Accesso non autorizzato.</p></div>';
+  // Avvia controllo automatico ore ogni volta che admin apre le notifiche
+  controlloGiornalieroOre();
   const notifiche=(db.notifiche||[]).sort((a,b)=>b.creato.localeCompare(a.creato));
   const bozzeBloccate=[...(db.registrazioniDiserbo||[]).map(r=>({...r,_mod:'diserbo'})),...(db.registrazioniVerde||[]).map(r=>({...r,_mod:'verde'}))]
     .filter(r=>r.statoInvio==='bozza'&&r.data<oggi()).sort((a,b)=>b.data.localeCompare(a.data));
@@ -1021,12 +989,21 @@ function renderNotifiche(){
   if(oreProblemi.length){
     html+='<div class="card"><div class="card-title" style="color:var(--giallo)">&#9201;&#65039; Ore insufficienti</div>';
     oreProblemi.forEach(function(n){
+      const oreLabel = n.oreTot === 0
+        ? '<strong style="color:var(--rosso)">0h — nessuna registrazione</strong>'
+        : '<strong style="color:var(--giallo)">'+n.oreTot+'h</strong> su 8h previste';
+      const tipoLabel = n.oreTot === 0
+        ? '&#128683; Assente (nessuna registrazione)'
+        : '&#9201;&#65039; Ore insufficienti';
       html+='<div class="notif-card">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
-        +'<div><strong>'+n.opNome+'</strong> &mdash; '+n.data
-        +'<br><span class="text-small">Ore registrate: <strong style="color:var(--rosso)">'+n.oreTot+'h</strong> su 8h previste</span></div>'
+        +'<div>'
+        +'<span style="font-size:.75rem;font-weight:700;color:var(--grigio-mid)">'+tipoLabel+'</span><br>'
+        +'<strong>'+n.opNome+'</strong> &mdash; '+n.data
+        +'<br><span class="text-small">Ore registrate: '+oreLabel+'</span>'
+        +'</div>'
         +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-        +'<button class="btn btn-verde btn-sm" data-notif="'+n.id+'" onclick="adminApprovaAssenza(this.dataset.notif)">&#9989; Approva assenza</button>'
+        +'<button class="btn btn-verde btn-sm" data-notif="'+n.id+'" onclick="adminApprovaAssenza(this.dataset.notif)">&#9989; Approva assenza/permesso</button>'
         +'</div></div></div>';
     });
     html+='</div>';
@@ -1189,17 +1166,102 @@ function esportaBackup(){
 function isGiornoLavorativo(data){const d=new Date(data);const dow=d.getDay();return dow>=1&&dow<=5;}
 function navGo(el){routeTo(el.dataset.r);}
 
-function toggleOreInput(cb){
-  const row=cb.closest('.op-ore-row');
-  if(!row) return;
-  const input=row.querySelector('.op-ore-input');
-  if(!input) return;
-  if(cb.checked){
-    input.classList.add('visible');
-    input.focus();
-  } else {
-    input.classList.remove('visible');
-    input.value='';
+// ============================================================
+// CONTROLLO AUTOMATICO ORE GIORNALIERO
+// Si attiva quando admin apre il programma o le notifiche
+// Controlla tutti i giorni lavorativi dall'ultima verifica ad oggi
+// ============================================================
+function controlloGiornalieroOre(){
+  if(!currentUser || currentUser.ruolo !== 'admin') return;
+  if(!db.notifiche) db.notifiche = [];
+
+  // Recupera l'ultima data verificata (salva in db per persistenza)
+  if(!db._ultimoControlloOre) db._ultimoControlloOre = null;
+
+  const oggiStr = oggi();
+
+  // Costruisce lista di giorni lavorativi da verificare:
+  // dall'ultima verifica (esclusa) fino a ieri (incluso)
+  // Mai verificare oggi perché gli operatori potrebbero ancora registrare
+  const giorniDaVerificare = [];
+  let cursore = new Date();
+  cursore.setDate(cursore.getDate() - 1); // parti da ieri
+
+  // Vai indietro massimo 30 giorni per sicurezza
+  for(let i = 0; i < 30; i++){
+    const dataStr = cursore.toISOString().slice(0, 10);
+
+    // Fermati se raggiungi l'ultima data già verificata
+    if(db._ultimoControlloOre && dataStr <= db._ultimoControlloOre) break;
+
+    // Solo giorni lavorativi (lun-ven)
+    const dow = cursore.getDay();
+    if(dow >= 1 && dow <= 5){
+      giorniDaVerificare.push(dataStr);
+    }
+
+    cursore.setDate(cursore.getDate() - 1);
+  }
+
+  if(giorniDaVerificare.length === 0){
+    // Niente di nuovo da verificare
+    return;
+  }
+
+  // Per ogni giorno da verificare, controlla ogni operatore
+  const operatoriAttivi = db.utenti.filter(u => u.attivo && u.ruolo === 'operatore');
+
+  giorniDaVerificare.forEach(data => {
+    operatoriAttivi.forEach(op => {
+      // Calcola ore totali di questo operatore per questa data
+      // considera sia registrazioni proprie che quelle fatte da compagni di squadra
+      // usa oreIndividuali se presenti, altrimenti ore generiche
+      const regs = [...(db.registrazioniDiserbo||[]), ...(db.registrazioniVerde||[])]
+        .filter(r => r.data === data && r.operatori && r.operatori.includes(op.id) && r.statoInvio !== 'bozza');
+
+      const oreTot = regs.reduce((s, r) => {
+        if(r.oreIndividuali && r.oreIndividuali[op.id] !== undefined){
+          return s + (r.oreIndividuali[op.id] || 0);
+        }
+        return s + (r.ore || 0);
+      }, 0);
+
+      // Rimuovi eventuale notifica precedente per questo operatore+data
+      db.notifiche = db.notifiche.filter(n => !(n.tipo === 'ore' && n.opId === op.id && n.data === data));
+
+      // Genera notifica se ore < 8 (include anche 0 ore = assente non giustificato)
+      if(oreTot < 8){
+        // Non generare se già approvata assenza in precedenza
+        const giaApprovata = (db.notifiche||[]).some(n =>
+          n.tipo === 'ore' && n.opId === op.id && n.data === data && n.stato === 'assenza_approvata'
+        );
+        if(!giaApprovata){
+          db.notifiche.push({
+            id: 'ore_' + op.id + '_' + data,
+            tipo: 'ore',
+            opId: op.id,
+            opNome: op.nome + ' ' + op.cognome,
+            data,
+            oreTot,
+            stato: 'da_verificare',
+            creato: new Date().toISOString(),
+            letto: false
+          });
+        }
+      }
+    });
+  });
+
+  // Aggiorna ultima data verificata (il più recente tra i giorni controllati)
+  const piuRecente = giorniDaVerificare.sort().reverse()[0];
+  db._ultimoControlloOre = piuRecente;
+
+  saveDB();
+  aggiornaBadgeNotifiche();
+
+  const nuove = giorniDaVerificare.length;
+  if(nuove > 0){
+    console.log('Controllo ore completato: verificati ' + nuove + ' giorni lavorativi.');
   }
 }
 

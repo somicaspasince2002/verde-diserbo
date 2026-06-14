@@ -876,22 +876,12 @@ function adminApprovaRegistrazione(modulo,id){
 function adminApprovaAssenza(notifId){
   const n=(db.notifiche||[]).find(x=>x.id===notifId);
   if(!n)return;
-  // Salva in registro permanente
-  if(!db._oreApprovate) db._oreApprovate=[];
-  const giaPresente=db._oreApprovate.some(function(a){return a.opId===n.opId&&a.data===n.data;});
-  if(!giaPresente){
-    db._oreApprovate.push({opId:n.opId,opNome:n.opNome,data:n.data,oreTot:n.oreTot,approvatoIl:new Date().toISOString()});
-  }
-  // Rimuovi notifica definitivamente
-  db.notifiche=(db.notifiche||[]).filter(function(x){return x.id!==notifId;});
-  // Assicura che _ultimoControlloOre sia impostato per evitare ricreazione
-  if(!db._ultimoControlloOre){
-    const ieri=new Date();
-    ieri.setDate(ieri.getDate()-1);
-    db._ultimoControlloOre=ieri.toISOString().slice(0,10);
-  }
+  // Marca come approvata — NON eliminare, così rimane in Firebase
+  // e il controllo automatico non la ricrea
+  n.stato='assenza_approvata';
+  n.letto=true;
+  n.approvatoIl=new Date().toISOString();
   saveDB();
-  // Forza aggiornamento badge
   aggiornaBadgeNotifiche();
   routeTo('notifiche');
   showBanner('&#9989; Assenza approvata per '+n.opNome,'success');
@@ -907,31 +897,42 @@ function generaNotificheApprovazione(regId){
   db.notifiche.push({id:'notif_'+Date.now(),tipo:'approvazione',regId,modulo:isD?'diserbo':'verde',data:r.data,operatori:r.operatori,creato:new Date().toISOString(),letto:false});
 }
 function generaNotificheOre(data){
-  if(!data||!isGiornoLavorativo(data)) return;
+  if(!data) return;
   if(!db.notifiche) db.notifiche=[];
-  const operatoriAttivi=db.utenti.filter(u=>u.attivo&&u.ruolo==='operatore');
-  operatoriAttivi.forEach(op=>{
-    // Calcola ore dalle registrazioni definitive (non bozze)
-    // Un operatore contribuisce con le sue ore in una registrazione solo se compare nella lista operatori
+  const operatoriAttivi=db.utenti.filter(function(u){return u.attivo&&u.ruolo==='operatore';});
+  operatoriAttivi.forEach(function(op){
     const regs=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
-      .filter(r=>r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza');
-    // Somma le ore specifiche per questo operatore (campo ore = ore per singolo operatore)
-    const oreTot=regs.reduce((s,r)=>s+(r.ore||0),0);
-    db.notifiche=db.notifiche.filter(n=>!(n.tipo==='ore'&&n.opId===op.id&&n.data===data));
-    if(oreTot<8&&oreTot>0){
-      db.notifiche.push({id:'ore_'+op.id+'_'+data,tipo:'ore',opId:op.id,opNome:op.nome+' '+op.cognome,data,oreTot,stato:'da_verificare',creato:new Date().toISOString(),letto:false});
+      .filter(function(r){return r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza';});
+    const oreTot=regs.reduce(function(s,r){
+      if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined) return s+(r.oreIndividuali[op.id]||0);
+      return s+(r.ore||0);
+    },0);
+    // Controlla se esiste già una notifica per questo operatore+data
+    const esistente=(db.notifiche||[]).find(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data;});
+    if(esistente){
+      // Se già approvata non toccare
+      if(esistente.stato==='assenza_approvata') return;
+      // Altrimenti aggiorna le ore
+      esistente.oreTot=oreTot;
+      if(oreTot>=8) db.notifiche=db.notifiche.filter(function(n){return !(n.tipo==='ore'&&n.opId===op.id&&n.data===data);});
+    } else {
+      // Non esiste — crea solo se ore < 8 e giorno lavorativo
+      const dow=new Date(data).getDay();
+      if((dow>=1&&dow<=5)&&oreTot>0&&oreTot<8){
+        db.notifiche.push({
+          id:'ore_'+op.id+'_'+data,
+          tipo:'ore',opId:op.id,
+          opNome:op.nome+' '+op.cognome,
+          data,oreTot,
+          stato:'da_verificare',
+          creato:new Date().toISOString(),
+          letto:false
+        });
+      }
     }
   });
 }
-function aggiornaBadgeNotifiche(){
-  if(!currentUser||currentUser.ruolo!=='admin') return;
-  const pendenti=(db.notifiche||[]).filter(n=>!n.letto).length;
-  const tab=document.querySelector('.nav-tab[data-route="notifiche"]');
-  if(!tab) return;
-  const existing=tab.querySelector('.notif-badge');
-  if(existing) existing.remove();
-  if(pendenti>0){const badge=document.createElement('span');badge.className='notif-badge';badge.textContent=pendenti>9?'9+':pendenti;tab.appendChild(badge);}
-}
+
 
 // ============ LE MIE REGISTRAZIONI ============
 function renderMieRegistrazioni(){
@@ -990,9 +991,7 @@ function renderNotifiche(){
     return r&&r.statoInvio==='inviato';
   });
   const oreProblemi=notifiche.filter(function(n){
-    if(n.tipo!=='ore') return false;
-    if((db._oreApprovate||[]).some(function(a){return a.opId===n.opId&&a.data===n.data;})) return false;
-    return n.stato==='da_verificare';
+    return n.tipo==='ore' && n.stato==='da_verificare';
   });
   const totPendenti=bozzeBloccate.length+daApprovare.length+oreProblemi.length;
   // Marca come letto
@@ -1278,24 +1277,25 @@ function controlloGiornalieroOre(){
         if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined) return s+(r.oreIndividuali[op.id]||0);
         return s+(r.ore||0);
       },0);
-      // Controlla registro permanente approvazioni
-      const giaApprovata=(db._oreApprovate||[]).some(function(a){return a.opId===op.id&&a.data===data;});
-      if(!giaApprovata){
-        db.notifiche=db.notifiche.filter(function(n){return !(n.tipo==='ore'&&n.opId===op.id&&n.data===data);});
+      // Controlla se già approvata dentro notifiche
+      const notifEsistente=(db.notifiche||[]).find(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data;});
+      if(notifEsistente){
+        // Se già approvata non toccare niente
+        if(notifEsistente.stato==='assenza_approvata') return;
+        // Se da_verificare aggiorna le ore (potrebbero essere cambiate)
+        notifEsistente.oreTot=oreTot;
+      } else {
+        // Non esiste ancora — creala solo se ore < 8
         if(oreTot<8){
-          // Non ricreare se già presente come da_verificare
-          const giaPresente=(db.notifiche||[]).some(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data;});
-          if(!giaPresente){
-            db.notifiche.push({
-              id:'ore_'+op.id+'_'+data,
-              tipo:'ore',opId:op.id,
-              opNome:op.nome+' '+op.cognome,
-              data,oreTot,
-              stato:'da_verificare',
-              creato:new Date().toISOString(),
-              letto:false
-            });
-          }
+          db.notifiche.push({
+            id:'ore_'+op.id+'_'+data,
+            tipo:'ore',opId:op.id,
+            opNome:op.nome+' '+op.cognome,
+            data,oreTot,
+            stato:'da_verificare',
+            creato:new Date().toISOString(),
+            letto:false
+          });
         }
       }
     });

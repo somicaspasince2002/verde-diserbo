@@ -876,15 +876,24 @@ function adminApprovaRegistrazione(modulo,id){
 function adminApprovaAssenza(notifId){
   const n=(db.notifiche||[]).find(x=>x.id===notifId);
   if(!n)return;
-  // Salva in un registro permanente delle assenze approvate
+  // Salva in registro permanente
   if(!db._oreApprovate) db._oreApprovate=[];
   const giaPresente=db._oreApprovate.some(function(a){return a.opId===n.opId&&a.data===n.data;});
   if(!giaPresente){
     db._oreApprovate.push({opId:n.opId,opNome:n.opNome,data:n.data,oreTot:n.oreTot,approvatoIl:new Date().toISOString()});
   }
-  // Rimuovi la notifica definitivamente
-  db.notifiche=db.notifiche.filter(function(x){return x.id!==notifId;});
-  saveDB();routeTo('notifiche');
+  // Rimuovi notifica definitivamente
+  db.notifiche=(db.notifiche||[]).filter(function(x){return x.id!==notifId;});
+  // Assicura che _ultimoControlloOre sia impostato per evitare ricreazione
+  if(!db._ultimoControlloOre){
+    const ieri=new Date();
+    ieri.setDate(ieri.getDate()-1);
+    db._ultimoControlloOre=ieri.toISOString().slice(0,10);
+  }
+  saveDB();
+  // Forza aggiornamento badge
+  aggiornaBadgeNotifiche();
+  routeTo('notifiche');
   showBanner('&#9989; Assenza approvata per '+n.opNome,'success');
 }
 
@@ -1241,13 +1250,20 @@ function toggleOreInput(cb){
 function controlloGiornalieroOre(){
   if(!currentUser||currentUser.ruolo!=='admin') return;
   if(!db.notifiche) db.notifiche=[];
-  if(!db._ultimoControlloOre) db._ultimoControlloOre=null;
+  if(!db._ultimoControlloOre){
+    // Prima volta: imposta a ieri per non ricontrollare tutto il passato
+    const ieri=new Date();
+    ieri.setDate(ieri.getDate()-1);
+    db._ultimoControlloOre=ieri.toISOString().slice(0,10);
+    saveDB();
+    return; // Non fare niente al primo avvio
+  }
   const giorniDaVerificare=[];
   let cursore=new Date();
   cursore.setDate(cursore.getDate()-1);
   for(let i=0;i<30;i++){
     const dataStr=cursore.toISOString().slice(0,10);
-    if(db._ultimoControlloOre&&dataStr<=db._ultimoControlloOre) break;
+    if(dataStr<=db._ultimoControlloOre) break;
     const dow=cursore.getDay();
     if(dow>=1&&dow<=5) giorniDaVerificare.push(dataStr);
     cursore.setDate(cursore.getDate()-1);

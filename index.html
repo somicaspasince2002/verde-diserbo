@@ -353,6 +353,9 @@ function doLogin(){
   document.getElementById('app-screen').classList.remove('hidden');
   document.getElementById('user-name-hdr').textContent=ut.nome+' '+ut.cognome+' ['+ruoliLabel[ut.ruolo]+']';
   buildNav();routeTo('home');
+  if(ut.ruolo==='admin'){
+    setTimeout(function(){controlloGiornalieroOre();},3000);
+  }
 }
 function doLogout(){
   currentUser=null;
@@ -522,15 +525,16 @@ function salvaDiserbo(editId){
   const aid=document.getElementById('d-area').value;
   const operatori=[...document.querySelectorAll('#d-operatori input:checked')].map(i=>i.value);
   const lavorazioni=[...document.querySelectorAll('#d-lavorazioni input:checked')].map(i=>i.value);
-  const oreIndividuali={};
+  const oreIndividualiD={};
   document.querySelectorAll('#d-operatori input[type=checkbox]:checked').forEach(function(cb){
-    const opId=cb.value;
-    const oreInput=document.querySelector('#d-operatori input[data-opid="'+opId+'"]');
-    oreIndividuali[opId]=parseFloat(oreInput&&oreInput.value?oreInput.value:0)||0;
+    const oid=cb.value;
+    const inp=document.querySelector('#d-operatori input[data-opid="'+oid+'"]');
+    oreIndividualiD[oid]=parseFloat(inp&&inp.value?inp.value:0)||0;
   });
-  const oreVals=Object.values(oreIndividuali);
-  const ore=oreVals.length>0?Math.max.apply(null,oreVals):0;
-  const oreTotaliCalcolate=oreVals.reduce(function(s,v){return s+v;},0);
+  const oreValsD=Object.values(oreIndividualiD);
+  const ore=oreValsD.length>0?Math.max.apply(null,oreValsD):0;
+  const oreTotaliCalcolate=oreValsD.reduce(function(s,v){return s+v;},0);
+  const oreIndividuali=oreIndividualiD;
   const stato=document.querySelector('input[name="d-stato-r"]:checked');
   const note=document.getElementById('d-note').value.trim();
   const invSel=document.querySelector('input[name="d-inv"]:checked');
@@ -629,15 +633,16 @@ function salvaVerde(editId){
   const aid=document.getElementById('v-area').value;
   const operatori=[...document.querySelectorAll('#v-operatori input:checked')].map(i=>i.value);
   const lavorazioni=[...document.querySelectorAll('#v-lavorazioni input:checked')].map(i=>i.value);
-  const oreIndividuali={};
+  const oreIndividualiV={};
   document.querySelectorAll('#v-operatori input[type=checkbox]:checked').forEach(function(cb){
-    const opId=cb.value;
-    const oreInput=document.querySelector('#v-operatori input[data-opid="'+opId+'"]');
-    oreIndividuali[opId]=parseFloat(oreInput&&oreInput.value?oreInput.value:0)||0;
+    const oid=cb.value;
+    const inp=document.querySelector('#v-operatori input[data-opid="'+oid+'"]');
+    oreIndividualiV[oid]=parseFloat(inp&&inp.value?inp.value:0)||0;
   });
-  const oreVals=Object.values(oreIndividuali);
-  const ore=oreVals.length>0?Math.max.apply(null,oreVals):0;
-  const oreTotaliCalcolate=oreVals.reduce(function(s,v){return s+v;},0);
+  const oreValsV=Object.values(oreIndividualiV);
+  const ore=oreValsV.length>0?Math.max.apply(null,oreValsV):0;
+  const oreTotaliCalcolate=oreValsV.reduce(function(s,v){return s+v;},0);
+  const oreIndividuali=oreIndividualiV;
   const stato=document.querySelector('input[name="v-stato-r"]:checked');
   const note=document.getElementById('v-note').value.trim();
   const invSel=document.querySelector('input[name="v-inv"]:checked');
@@ -958,6 +963,7 @@ function renderMieRegistrazioni(){
 // ============ NOTIFICHE ADMIN ============
 function renderNotifiche(){
   if(currentUser.ruolo!=='admin') return '<div class="card"><p>Accesso non autorizzato.</p></div>';
+  controlloGiornalieroOre();
   const notifiche=(db.notifiche||[]).sort((a,b)=>b.creato.localeCompare(a.creato));
   const bozzeBloccate=[...(db.registrazioniDiserbo||[]).map(r=>({...r,_mod:'diserbo'})),...(db.registrazioniVerde||[]).map(r=>({...r,_mod:'verde'}))]
     .filter(r=>r.statoInvio==='bozza'&&r.data<oggi()).sort((a,b)=>b.data.localeCompare(a.data));
@@ -1214,14 +1220,68 @@ function toggleOreInput(cb){
   if(!row) return;
   const input=row.querySelector('.op-ore-input');
   if(!input) return;
-  if(cb.checked){
-    input.classList.add('visible');
-    input.focus();
-  } else {
-    input.classList.remove('visible');
-    input.value='';
-  }
+  if(cb.checked){input.classList.add('visible');input.focus();}
+  else{input.classList.remove('visible');input.value='';}
 }
+
+// ============================================================
+// CONTROLLO AUTOMATICO ORE GIORNALIERO
+// ============================================================
+function controlloGiornalieroOre(){
+  if(!currentUser||currentUser.ruolo!=='admin') return;
+  if(!db.notifiche) db.notifiche=[];
+  if(!db._ultimoControlloOre) db._ultimoControlloOre=null;
+  const giorniDaVerificare=[];
+  let cursore=new Date();
+  cursore.setDate(cursore.getDate()-1);
+  for(let i=0;i<30;i++){
+    const dataStr=cursore.toISOString().slice(0,10);
+    if(db._ultimoControlloOre&&dataStr<=db._ultimoControlloOre) break;
+    const dow=cursore.getDay();
+    if(dow>=1&&dow<=5) giorniDaVerificare.push(dataStr);
+    cursore.setDate(cursore.getDate()-1);
+  }
+  if(!giorniDaVerificare.length) return;
+  const operatoriAttivi=db.utenti.filter(function(u){return u.attivo&&u.ruolo==='operatore';});
+  giorniDaVerificare.forEach(function(data){
+    operatoriAttivi.forEach(function(op){
+      const regs=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
+        .filter(function(r){return r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza';});
+      const oreTot=regs.reduce(function(s,r){
+        if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined) return s+(r.oreIndividuali[op.id]||0);
+        return s+(r.ore||0);
+      },0);
+      const giaApprovata=(db.notifiche||[]).some(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data&&n.stato==='assenza_approvata';});
+      if(!giaApprovata){
+        db.notifiche=db.notifiche.filter(function(n){return !(n.tipo==='ore'&&n.opId===op.id&&n.data===data);});
+        if(oreTot<8){
+          db.notifiche.push({
+            id:'ore_'+op.id+'_'+data,
+            tipo:'ore',opId:op.id,
+            opNome:op.nome+' '+op.cognome,
+            data,oreTot,
+            stato:'da_verificare',
+            creato:new Date().toISOString(),
+            letto:false
+          });
+        }
+      }
+    });
+  });
+  const piuRecente=giorniDaVerificare.slice().sort().reverse()[0];
+  db._ultimoControlloOre=piuRecente;
+  saveDB();
+  aggiornaBadgeNotifiche();
+  console.log('Controllo ore: verificati '+giorniDaVerificare.length+' giorni lavorativi.');
+}
+
+// Gestione stampa: aggiunge classe UTC al body
+window.addEventListener('beforeprint',function(){
+  if(currentUser&&currentUser.ruolo==='consultazione') document.body.classList.add('utc-print');
+});
+window.addEventListener('afterprint',function(){
+  document.body.classList.remove('utc-print');
+});
 
 // Gestione stampa: aggiunge classe al body per UTC
 window.addEventListener('beforeprint', function(){

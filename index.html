@@ -876,7 +876,14 @@ function adminApprovaRegistrazione(modulo,id){
 function adminApprovaAssenza(notifId){
   const n=(db.notifiche||[]).find(x=>x.id===notifId);
   if(!n)return;
-  n.stato='assenza_approvata';n.letto=true;
+  // Salva in un registro permanente delle assenze approvate
+  if(!db._oreApprovate) db._oreApprovate=[];
+  const giaPresente=db._oreApprovate.some(function(a){return a.opId===n.opId&&a.data===n.data;});
+  if(!giaPresente){
+    db._oreApprovate.push({opId:n.opId,opNome:n.opNome,data:n.data,oreTot:n.oreTot,approvatoIl:new Date().toISOString()});
+  }
+  // Rimuovi la notifica definitivamente
+  db.notifiche=db.notifiche.filter(function(x){return x.id!==notifId;});
   saveDB();routeTo('notifiche');
   showBanner('&#9989; Assenza approvata per '+n.opNome,'success');
 }
@@ -973,7 +980,11 @@ function renderNotifiche(){
     const r=arr.find(x=>x.id===n.regId);
     return r&&r.statoInvio==='inviato';
   });
-  const oreProblemi=notifiche.filter(n=>n.tipo==='ore'&&n.stato==='da_verificare');
+  const oreProblemi=notifiche.filter(function(n){
+    if(n.tipo!=='ore') return false;
+    if((db._oreApprovate||[]).some(function(a){return a.opId===n.opId&&a.data===n.data;})) return false;
+    return n.stato==='da_verificare';
+  });
   const totPendenti=bozzeBloccate.length+daApprovare.length+oreProblemi.length;
   // Marca come letto
   notifiche.forEach(n=>{n.letto=true;});
@@ -1251,19 +1262,24 @@ function controlloGiornalieroOre(){
         if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined) return s+(r.oreIndividuali[op.id]||0);
         return s+(r.ore||0);
       },0);
-      const giaApprovata=(db.notifiche||[]).some(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data&&n.stato==='assenza_approvata';});
+      // Controlla registro permanente approvazioni
+      const giaApprovata=(db._oreApprovate||[]).some(function(a){return a.opId===op.id&&a.data===data;});
       if(!giaApprovata){
         db.notifiche=db.notifiche.filter(function(n){return !(n.tipo==='ore'&&n.opId===op.id&&n.data===data);});
         if(oreTot<8){
-          db.notifiche.push({
-            id:'ore_'+op.id+'_'+data,
-            tipo:'ore',opId:op.id,
-            opNome:op.nome+' '+op.cognome,
-            data,oreTot,
-            stato:'da_verificare',
-            creato:new Date().toISOString(),
-            letto:false
-          });
+          // Non ricreare se già presente come da_verificare
+          const giaPresente=(db.notifiche||[]).some(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data;});
+          if(!giaPresente){
+            db.notifiche.push({
+              id:'ore_'+op.id+'_'+data,
+              tipo:'ore',opId:op.id,
+              opNome:op.nome+' '+op.cognome,
+              data,oreTot,
+              stato:'da_verificare',
+              creato:new Date().toISOString(),
+              letto:false
+            });
+          }
         }
       }
     });

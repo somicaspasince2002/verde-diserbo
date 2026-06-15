@@ -553,8 +553,6 @@ function salvaDiserbo(editId){
   } else {
     db.registrazioniDiserbo.push({id:'rd'+Date.now(),creato:new Date().toISOString(),creatoDa:currentUser.id,...rec});
   }
-  if(statoInvio==='inviato') generaNotificheApprovazione(rec.id||'rd'+Date.now());
-  generaNotificheOre(data);
   saveDB();
   const lbl=statoInvio==='inviato'?'Registrazione inviata!':'Bozza salvata!';
   msg.innerHTML='<div class="alert alert-success">&#9989; '+lbl+'</div>';
@@ -672,8 +670,6 @@ function salvaVerde(editId){
   } else {
     db.registrazioniVerde.push({id:'rv'+Date.now(),creato:new Date().toISOString(),creatoDa:currentUser.id,...rec});
   }
-  if(statoInvio==='inviato') generaNotificheApprovazione('rv'+Date.now());
-  generaNotificheOre(data);
   saveDB();
   const lbl=statoInvio==='inviato'?'Registrazione inviata!':'Bozza salvata!';
   msg.innerHTML='<div class="alert alert-success">&#9989; '+lbl+'</div>';
@@ -844,7 +840,7 @@ function inviaDefinitivoSingolo(modulo,id){
   const r=arr.find(x=>x.id===id);
   if(!r)return;
   r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;
-  saveDB();generaNotificheApprovazione(id);refreshCurrentView();
+  saveDB();refreshCurrentView();
   showBanner('&#10003; Registrazione inviata!','success');
 }
 function inviaDefinitvioTutte(){
@@ -852,7 +848,7 @@ function inviaDefinitvioTutte(){
   let count=0;
   [...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
     .filter(r=>r.data===o&&r.operatori&&r.operatori.includes(currentUser.id)&&r.statoInvio==='bozza')
-    .forEach(r=>{r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;generaNotificheApprovazione(r.id);count++;});
+    .forEach(r=>{r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;count++;});
   saveDB();refreshCurrentView();
   showBanner('&#10003; '+count+' registrazioni inviate!','success');
 }
@@ -861,30 +857,33 @@ function adminInviaBozzaOperatore(modulo,id){
   const r=arr.find(x=>x.id===id);
   if(!r)return;
   r.statoInvio='inviato';r.inviatoIl=new Date().toISOString();r.inviatoDa=currentUser.id;r.inviatoPerConto=true;
-  saveDB();generaNotificheApprovazione(id);routeTo('notifiche');
+  saveDB();routeTo('notifiche');
   showBanner('&#10003; Bozza inviata per conto dell\'operatore','success');
 }
 function adminApprovaRegistrazione(modulo,id){
   const arr=modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
   const r=arr.find(x=>x.id===id);
   if(!r)return;
-  r.statoInvio='approvato';r.approvatoIl=new Date().toISOString();
-  db.notifiche=(db.notifiche||[]).filter(n=>n.regId!==id);
-  saveDB();routeTo('notifiche');
+  r.statoInvio='approvato';
+  r.approvatoIl=new Date().toISOString();
+  // Rimuovi notifica approvazione definitivamente
+  db.notifiche=(db.notifiche||[]).filter(function(n){return n.regId!==id;});
+  saveDB();
+  aggiornaBadgeNotifiche();
+  routeTo('notifiche');
   showBanner('&#9989; Registrazione approvata!','success');
 }
 function adminApprovaAssenza(notifId){
   const n=(db.notifiche||[]).find(x=>x.id===notifId);
   if(!n)return;
-  // Marca come approvata — NON eliminare, così rimane in Firebase
-  // e il controllo automatico non la ricrea
+  // Marca come approvata — rimane in Firebase così il controllo non la ricrea
   n.stato='assenza_approvata';
   n.letto=true;
   n.approvatoIl=new Date().toISOString();
   saveDB();
   aggiornaBadgeNotifiche();
   routeTo('notifiche');
-  showBanner('&#9989; Assenza approvata per '+n.opNome,'success');
+  showBanner('&#9989; Assenza/permesso approvato per '+n.opNome,'success');
 }
 
 // ============ NOTIFICHE ============
@@ -1232,7 +1231,40 @@ function esportaBackup(){
   a.download='somica_backup_'+oggi()+'.json';a.click();
 }
 function isGiornoLavorativo(data){const d=new Date(data);const dow=d.getDay();return dow>=1&&dow<=5;}
+function aggiornaBadgeNotifiche(){
+  if(!currentUser||currentUser.ruolo!=='admin') return;
+  const pendenti=(db.notifiche||[]).filter(function(n){
+    // Escludi assenze già approvate
+    if(n.tipo==='ore'&&n.stato==='assenza_approvata') return false;
+    // Escludi registrazioni già approvate
+    if(n.tipo==='approvazione'){
+      const arr=n.modulo==='diserbo'?db.registrazioniDiserbo:db.registrazioniVerde;
+      const r=arr?arr.find(function(x){return x.id===n.regId;}):null;
+      if(r&&r.statoInvio==='approvato') return false;
+    }
+    return true;
+  }).length;
+  const tab=document.querySelector('.nav-tab[data-route="notifiche"]');
+  if(!tab) return;
+  const existing=tab.querySelector('.notif-badge');
+  if(existing) existing.remove();
+  if(pendenti>0){
+    const badge=document.createElement('span');
+    badge.className='notif-badge';
+    badge.textContent=pendenti>9?'9+':String(pendenti);
+    tab.appendChild(badge);
+  }
+}
+
 function navGo(el){routeTo(el.dataset.r);}
+
+// Gestione stampa: aggiunge classe UTC al body
+window.addEventListener('beforeprint',function(){
+  if(currentUser&&currentUser.ruolo==='consultazione') document.body.classList.add('utc-print');
+});
+window.addEventListener('afterprint',function(){
+  document.body.classList.remove('utc-print');
+});
 
 function toggleOreInput(cb){
   const row=cb.closest('.op-ore-row');
@@ -1249,17 +1281,26 @@ function toggleOreInput(cb){
 function controlloGiornalieroOre(){
   if(!currentUser||currentUser.ruolo!=='admin') return;
   if(!db.notifiche) db.notifiche=[];
+
+  // Se primo avvio: imposta punto zero a ieri e non fare niente
   if(!db._ultimoControlloOre){
-    // Prima volta: imposta a ieri per non ricontrollare tutto il passato
     const ieri=new Date();
     ieri.setDate(ieri.getDate()-1);
     db._ultimoControlloOre=ieri.toISOString().slice(0,10);
     saveDB();
-    return; // Non fare niente al primo avvio
+    return;
   }
+
+  // Trova giorni da verificare: dal giorno dopo _ultimoControlloOre fino a ieri
+  const ieri=new Date();
+  ieri.setDate(ieri.getDate()-1);
+  const ieriStr=ieri.toISOString().slice(0,10);
+
+  // Se già verificato ieri, non fare niente
+  if(db._ultimoControlloOre>=ieriStr) return;
+
   const giorniDaVerificare=[];
-  let cursore=new Date();
-  cursore.setDate(cursore.getDate()-1);
+  let cursore=new Date(ieri);
   for(let i=0;i<30;i++){
     const dataStr=cursore.toISOString().slice(0,10);
     if(dataStr<=db._ultimoControlloOre) break;
@@ -1267,25 +1308,35 @@ function controlloGiornalieroOre(){
     if(dow>=1&&dow<=5) giorniDaVerificare.push(dataStr);
     cursore.setDate(cursore.getDate()-1);
   }
-  if(!giorniDaVerificare.length) return;
+
+  if(!giorniDaVerificare.length){
+    db._ultimoControlloOre=ieriStr;
+    saveDB();
+    return;
+  }
+
   const operatoriAttivi=db.utenti.filter(function(u){return u.attivo&&u.ruolo==='operatore';});
+
   giorniDaVerificare.forEach(function(data){
+
+    // --- NOTIFICHE ORE < 8 ---
     operatoriAttivi.forEach(function(op){
       const regs=[...(db.registrazioniDiserbo||[]),...(db.registrazioniVerde||[])]
-        .filter(function(r){return r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza';});
+        .filter(function(r){
+          return r.data===data&&r.operatori&&r.operatori.includes(op.id)&&r.statoInvio!=='bozza';
+        });
       const oreTot=regs.reduce(function(s,r){
         if(r.oreIndividuali&&r.oreIndividuali[op.id]!==undefined) return s+(r.oreIndividuali[op.id]||0);
         return s+(r.ore||0);
       },0);
-      // Controlla se già approvata dentro notifiche
-      const notifEsistente=(db.notifiche||[]).find(function(n){return n.tipo==='ore'&&n.opId===op.id&&n.data===data;});
-      if(notifEsistente){
-        // Se già approvata non toccare niente
-        if(notifEsistente.stato==='assenza_approvata') return;
-        // Se da_verificare aggiorna le ore (potrebbero essere cambiate)
-        notifEsistente.oreTot=oreTot;
-      } else {
-        // Non esiste ancora — creala solo se ore < 8
+
+      // Controlla se già esiste notifica per questo operatore+data
+      const esistente=(db.notifiche||[]).find(function(n){
+        return n.tipo==='ore'&&n.opId===op.id&&n.data===data;
+      });
+
+      if(!esistente){
+        // Crea notifica se ore < 8 (incluso 0 = assente)
         if(oreTot<8){
           db.notifiche.push({
             id:'ore_'+op.id+'_'+data,
@@ -1297,36 +1348,42 @@ function controlloGiornalieroOre(){
             letto:false
           });
         }
+      } else if(esistente.stato!=='assenza_approvata'){
+        // Aggiorna ore se non ancora approvata
+        esistente.oreTot=oreTot;
+        if(oreTot>=8){
+          // Ore ok ora, rimuovi notifica
+          db.notifiche=db.notifiche.filter(function(n){
+            return !(n.tipo==='ore'&&n.opId===op.id&&n.data===data);
+          });
+        }
       }
     });
+
+    // --- NOTIFICHE APPROVAZIONE registrazioni inviate ---
+    [...(db.registrazioniDiserbo||[]).map(function(r){return Object.assign({},r,{_mod:'diserbo'});}),
+     ...(db.registrazioniVerde||[]).map(function(r){return Object.assign({},r,{_mod:'verde'});})]
+      .filter(function(r){return r.data===data&&r.statoInvio==='inviato';})
+      .forEach(function(r){
+        const giaNotificata=(db.notifiche||[]).some(function(n){return n.tipo==='approvazione'&&n.regId===r.id;});
+        if(!giaNotificata){
+          db.notifiche.push({
+            id:'notif_'+r.id,
+            tipo:'approvazione',
+            regId:r.id,
+            modulo:r._mod,
+            data:r.data,
+            operatori:r.operatori,
+            creato:new Date().toISOString(),
+            letto:false
+          });
+        }
+      });
   });
-  const piuRecente=giorniDaVerificare.slice().sort().reverse()[0];
-  db._ultimoControlloOre=piuRecente;
+
+  db._ultimoControlloOre=ieriStr;
   saveDB();
   aggiornaBadgeNotifiche();
-  console.log('Controllo ore: verificati '+giorniDaVerificare.length+' giorni lavorativi.');
+  console.log('Controllo notturno: verificati '+giorniDaVerificare.length+' giorni.');
 }
-
-// Gestione stampa: aggiunge classe UTC al body
-window.addEventListener('beforeprint',function(){
-  if(currentUser&&currentUser.ruolo==='consultazione') document.body.classList.add('utc-print');
-});
-window.addEventListener('afterprint',function(){
-  document.body.classList.remove('utc-print');
-});
-
-// Gestione stampa: aggiunge classe al body per UTC
-window.addEventListener('beforeprint', function(){
-  if(currentUser && currentUser.ruolo === 'consultazione'){
-    document.body.classList.add('utc-print');
-  }
-});
-window.addEventListener('afterprint', function(){
-  document.body.classList.remove('utc-print');
-});
-
-// Init Firebase on page load
-window.addEventListener('load', initFirebase);
-</script>
-</body>
-</html>
+>

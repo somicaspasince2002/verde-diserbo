@@ -407,18 +407,51 @@ function renderHome(){
       const righe=bozzeOggi.map(function(r){
         const isD=r.id.startsWith('rd');
         const aree=isD?db.areeDiserbo:db.areeVerde;
+        const lavs=isD?db.lavorazioniDiserbo:db.lavorazioniVerde;
+        const sett=isD?db.settoriDiserbo:db.settoriVerde;
         const a=aree.find(x=>x.id===r.areaId);
+        const s=sett?sett.find(x=>x.id===r.settoreId):null;
         const bloccata=isBozzaBloccata(r);
         const mod=isD?'diserbo':'verde';
+        const lavNomi=(r.lavorazioni||[]).map(function(lid){
+          if(lid==='lv17_2') return '2ª Verifica irrigazione';
+          const l=lavs.find(x=>x.id===lid);return l?l.nome:lid;
+        }).join(' • ');
+        const opsDettaglio=(r.operatori||[]).map(function(oid){
+          const u=db.utenti.find(x=>x.id===oid);
+          const nome=u?u.nome+' '+u.cognome:oid;
+          const ore=r.oreIndividuali&&r.oreIndividuali[oid]!==undefined?r.oreIndividuali[oid]:(r.ore||'-');
+          return nome+' ('+ore+'h)';
+        }).join(', ');
+        const statoColor=r.stato==='completata'?'#27ae60':r.stato==='sospesa'?'#e74c3c':'#f39c12';
+        const borderColor=isD?'#d4500a':'#1a5c2a';
         const btns=bloccata
-          ? '<span class="badge-bloccata">Bloccata</span>'
-          : '<button class="btn btn-grigio btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">&#9998;</button>'
-            +'<button class="btn btn-verde btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="inviaDefinitivoSingolo(this.dataset.mod,this.dataset.id)">&#10003; Invia</button>';
-        return '<div class="admin-item">'
-          +'<span class="item-name">'+(isD?'&#9986;&#65039;':'&#127807;')+' '+(a?a.nome:'Area')+' &mdash; '+r.data+'</span>'
-          +'<div style="display:flex;gap:6px;align-items:center">'+btns+'</div>'
-          +'</div>';
-      }).join('');
+          ? '<span class="badge-bloccata">Bloccata — attende l&#39;admin</span>'
+          : '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'
+            +'<button class="btn btn-grigio btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="modificaReg(this.dataset.mod,this.dataset.id)">✎ Modifica</button>'
+            +'<button class="btn btn-verde btn-sm" data-mod="'+mod+'" data-id="'+r.id+'" onclick="inviaDefinitivoSingolo(this.dataset.mod,this.dataset.id)">✓ Invia definitivamente</button>'
+            +'</div>';
+        return '<div class="notif-card" style="border-left-color:'+borderColor+';margin-bottom:10px;padding:12px">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+          +'<span>'+(isD?'&#9986;&#65039;':'&#127807;')+'</span>'
+          +'<strong>'+r.data+'</strong>'
+          +'<span style="padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700;background:'+statoColor+'22;color:'+statoColor+'">'+r.stato+'</span>'
+          +'<span class="badge-bozza">&#128221; Bozza</span>'
+          +'</div>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:.82rem;border:1px solid #eee">'
+          +'<tr><td style="padding:4px 8px;color:var(--grigio-mid);background:#f9f9f9;width:100px;font-weight:600">&#128205; Area</td>'
+          +'<td style="padding:4px 8px"><strong>'+(a?a.nome:'-')+(s?' — '+s.nome:'')+'</strong>'+(a?' ('+a.superficie+' m²)':'')+'</td></tr>'
+          +'<tr><td style="padding:4px 8px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600">&#128119; Operatori</td>'
+          +'<td style="padding:4px 8px">'+opsDettaglio+'</td></tr>'
+          +'<tr><td style="padding:4px 8px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600">&#9201;&#65039; Ore tot.</td>'
+          +'<td style="padding:4px 8px"><strong>'+(r.oreTotali||0).toFixed(1)+'h</strong></td></tr>'
+          +'<tr><td style="padding:4px 8px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600;vertical-align:top">&#128295; Lavorazioni</td>'
+          +'<td style="padding:4px 8px">'+lavNomi+'</td></tr>'
+          +(r.note?'<tr><td style="padding:4px 8px;color:var(--grigio-mid);background:#f9f9f9;font-weight:600;vertical-align:top">&#128221; Note</td>'
+          +'<td style="padding:4px 8px;font-style:italic;color:#555">'+r.note+'</td></tr>':'')
+          +'</table>'
+          +btns+'</div>';
+      }).join('')
       const tutteInviabili=bozzeOggi.length>1&&!bozzeOggi.some(r=>isBozzaBloccata(r));
       bozzeHtml='<div class="card" style="border-left:4px solid #ffc107;margin-top:14px">'
         +'<div class="card-title" style="color:#856404">&#128221; Bozze di oggi ('+bozzeOggi.length+')</div>'

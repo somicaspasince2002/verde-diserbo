@@ -1075,6 +1075,28 @@ function renderNotifiche(){
     });
     html+='</div>';
   }
+  // ---- ORE INSUFFICIENTI / ASSENTI ----
+  if(oreProblemi.length){
+    html+='<div class="card"><div class="card-title" style="color:var(--giallo)">&#9201;&#65039; Operatori con ore insufficienti o assenti</div>';
+    oreProblemi.forEach(function(n){
+      const oreLabel=n.oreTot===0
+        ?'<strong style="color:var(--rosso)">0h &mdash; nessuna registrazione</strong>'
+        :'<strong style="color:var(--giallo)">'+n.oreTot+'h</strong> su 8h previste';
+      const tipoLabel=n.oreTot===0?'&#128683; Assente':'&#9201;&#65039; Ore insufficienti';
+      html+='<div class="notif-card">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+        +'<span style="font-size:.75rem;font-weight:700;color:var(--grigio-mid)">'+tipoLabel+'</span><br>'
+        +'<strong>'+n.opNome+'</strong> &mdash; '+n.data
+        +'<br><span class="text-small">Ore registrate: '+oreLabel+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<button class="btn btn-verde btn-sm" data-notif="'+n.id+'" onclick="adminApprovaAssenza(this.dataset.notif)">&#9989; Approva assenza/permesso</button>'
+        +'</div></div></div>';
+    });
+    html+='</div>';
+  }
+
   if(!totPendenti) html+='<div class="card"><div class="ore-ok" style="margin:0">&#9989; Nessuna azione in attesa. Tutto in ordine!</div></div>';
   html+='</div>';
   return html;

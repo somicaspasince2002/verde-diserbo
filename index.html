@@ -147,8 +147,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f0;color:var(--
 .op-ore-input.visible{display:block;}
 </style>
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <link rel="apple-touch-icon" sizes="512x512" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="apple-touch-icon.png">
@@ -274,7 +274,7 @@ let firebaseDB=null,firebaseRef=null,useFirebase=false;
 function initFirebase(){
   try{
     if(typeof firebase!=='undefined' && FIREBASE_CONFIG.apiKey!=='INSERISCI_QUI_LA_TUA_API_KEY'){
-      firebase.initializeApp(FIREBASE_CONFIG);
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
       firebaseDB=firebase.database();
       firebaseRef=firebaseDB.ref('somica_vd');
       useFirebase=true;

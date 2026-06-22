@@ -1442,6 +1442,13 @@ function controlloGiornalieroOre(){
   console.log('Controllo notturno: verificati '+giorniDaVerificare.length+' giorni.');
 }
 
+
+// Avvia Firebase appena la pagina è pronta
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initFirebase);
+} else {
+  initFirebase();
+}
 </script>
 </body>
 </html>
